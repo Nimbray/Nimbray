@@ -21,13 +21,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      - name: Show package files
+        run: |
+          node -v
+          npm -v
+          cat package.json
 
       - name: Install dependencies
         run: npm install
 
+      - name: Debug dependencies
+        run: |
+          npm list next react react-dom || true
+          ls -la node_modules || true
+          ls -la node_modules/.bin || true
+
       - name: Verify Next.js installation
-        run: npx next --version
+        run: npm exec --package=next@14.2.35 -- next --version
 
       - name: Check official source
         run: npm run source:check
@@ -42,4 +53,4 @@ jobs:
         run: npm run typecheck --if-present
 
       - name: Build
-        run: npm run build
+        run: npm exec --package=next@14.2.35 -- next build
