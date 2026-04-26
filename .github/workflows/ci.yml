@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   pull_request:
@@ -22,23 +22,25 @@ jobs:
         with:
           node-version: 20
 
-      - name: Show package files
+      - name: Show environment
         run: |
           node -v
           npm -v
+          pwd
+          ls -la
           cat package.json
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install next@14.2.35 react@18.3.1 react-dom@18.3.1
 
-      - name: Debug dependencies
+      - name: Debug Next installation
         run: |
           npm list next react react-dom || true
-          ls -la node_modules || true
-          ls -la node_modules/.bin || true
-
-      - name: Verify Next.js installation
-        run: npm exec --package=next@14.2.35 -- next --version
+          ls -la node_modules/next || true
+          ls -la node_modules/next/dist/bin || true
+          node node_modules/next/dist/bin/next --version
 
       - name: Check official source
         run: npm run source:check
@@ -53,4 +55,4 @@ jobs:
         run: npm run typecheck --if-present
 
       - name: Build
-        run: npm exec --package=next@14.2.35 -- next build
+        run: node node_modules/next/dist/bin/next build
