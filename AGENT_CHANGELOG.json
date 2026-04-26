@@ -1,0 +1,33 @@
+{
+  "project": "NimbrayAI",
+  "current_version": "84.0.0",
+  "official_branch": "main",
+  "entries": [
+    {
+      "version": "84.0.0",
+      "agent": "integrateur",
+      "branch": "integration/v84-github-agent-automation",
+      "status": "official",
+      "summary": "Mise en place clé en main de l'automatisation GitHub multi-agents.",
+      "files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/agent-pr-check.yml",
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        ".github/CODEOWNERS",
+        "scripts/agent-workflow.js",
+        "scripts/agent-handoff.js",
+        "scripts/agent-changelog.js",
+        "scripts/agent-merge-check.js",
+        "GITHUB_AUTOMATION_QUICKSTART.md"
+      ],
+      "risks": [
+        "Remplacer les placeholders GitHub par le vrai compte ou les vraies équipes.",
+        "Activer manuellement la protection de branche main dans GitHub Settings."
+      ],
+      "tests": [
+        "npm run source:check",
+        "npm run agent:merge-check"
+      ]
+    }
+  ]
+}

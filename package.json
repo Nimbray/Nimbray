@@ -1,0 +1,32 @@
+{
+  "name": "nimbrayai-v84-github-agent-automation",
+  "version": "84.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "source:status": "node scripts/source-manager.js status",
+    "source:promote": "node scripts/source-manager.js promote",
+    "source:agent": "node scripts/source-manager.js agent",
+    "source:check": "node scripts/source-manager.js check",
+    "github:setup": "node scripts/github-setup-helper.js",
+    "agent:start": "node scripts/agent-workflow.js start",
+    "agent:handoff": "node scripts/agent-handoff.js",
+    "agent:changelog": "node scripts/agent-changelog.js",
+    "agent:merge-check": "node scripts/agent-merge-check.js",
+    "agent:pr-check": "node scripts/agent-workflow.js pr-check"
+  },
+  "dependencies": {
+    "mammoth": "^1.8.0",
+    "next": "^14.2.35",
+    "pdf-parse": "^1.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "@types/react": "^18.3.5",
+    "typescript": "^5.6.2"
+  }
+}

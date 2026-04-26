@@ -1,0 +1,31 @@
+# Remplace @TON-COMPTE par ton compte GitHub ou tes équipes GitHub.
+# Exemple équipe : @ton-org/agent-frontend
+
+# Intégration et source officielle
+/CURRENT_SOURCE.json @TON-COMPTE
+/SOURCE_OF_TRUTH.md @TON-COMPTE
+/AGENT_CHANGELOG.json @TON-COMPTE
+/.github/ @TON-COMPTE
+
+# Frontend
+/app/ @TON-COMPTE
+/components/ @TON-COMPTE
+/styles/ @TON-COMPTE
+/public/ @TON-COMPTE
+
+# Backend
+/app/api/ @TON-COMPTE
+/lib/ @TON-COMPTE
+/server/ @TON-COMPTE
+/middleware.ts @TON-COMPTE
+
+# IA
+/knowledge/ @TON-COMPTE
+/prompts/ @TON-COMPTE
+/lib/brain.ts @TON-COMPTE
+/lib/expert-team.ts @TON-COMPTE
+
+# Produit et documentation
+/README.md @TON-COMPTE
+/docs/ @TON-COMPTE
+/project-workspaces/ @TON-COMPTE
