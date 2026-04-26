@@ -22,37 +22,37 @@ jobs:
         with:
           node-version: 20
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Show environment
         run: |
           node -v
           npm -v
+          pnpm -v
           pwd
           ls -la
           cat package.json
 
       - name: Install dependencies
-        run: |
-          npm install
-          npm install next@14.2.35 react@18.3.1 react-dom@18.3.1
+        run: pnpm install --no-frozen-lockfile
 
-      - name: Debug Next installation
-        run: |
-          npm list next react react-dom || true
-          ls -la node_modules/next || true
-          ls -la node_modules/next/dist/bin || true
-          node node_modules/next/dist/bin/next --version
+      - name: Verify Next.js installation
+        run: pnpm exec next --version
 
       - name: Check official source
-        run: npm run source:check
+        run: pnpm run source:check
 
       - name: Agent merge check
-        run: npm run agent:merge-check
+        run: pnpm run agent:merge-check
 
       - name: Lint
-        run: npm run lint --if-present
+        run: pnpm run lint --if-present
 
       - name: Typecheck
-        run: npm run typecheck --if-present
+        run: pnpm run typecheck --if-present
 
       - name: Build
-        run: node node_modules/next/dist/bin/next build
+        run: pnpm exec next build
