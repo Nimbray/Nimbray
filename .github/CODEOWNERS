@@ -1,31 +1,50 @@
-# Remplace @TON-COMPTE par ton compte GitHub ou tes équipes GitHub.
-# Exemple équipe : @ton-org/agent-frontend
-
-# Intégration et source officielle
-/CURRENT_SOURCE.json @TON-COMPTE
-/SOURCE_OF_TRUTH.md @TON-COMPTE
-/AGENT_CHANGELOG.json @TON-COMPTE
-/.github/ @TON-COMPTE
+﻿# Nimbray CODEOWNERS
+# Au début, tout est validé par le compte / organisation Nimbray.
+# Plus tard, tu pourras remplacer @Nimbray par des équipes dédiées.
 
 # Frontend
-/app/ @TON-COMPTE
-/components/ @TON-COMPTE
-/styles/ @TON-COMPTE
-/public/ @TON-COMPTE
+/app/ @Nimbray
+/components/ @Nimbray
+/styles/ @Nimbray
+/public/ @Nimbray
 
 # Backend
-/app/api/ @TON-COMPTE
-/lib/ @TON-COMPTE
-/server/ @TON-COMPTE
-/middleware.ts @TON-COMPTE
+/app/api/ @Nimbray
+/lib/ @Nimbray
+/server/ @Nimbray
+/middleware.ts @Nimbray
 
 # IA
-/knowledge/ @TON-COMPTE
-/prompts/ @TON-COMPTE
-/lib/brain.ts @TON-COMPTE
-/lib/expert-team.ts @TON-COMPTE
+/knowledge/ @Nimbray
+/prompts/ @Nimbray
+/lib/brain.ts @Nimbray
+/lib/expert-team.ts @Nimbray
 
-# Produit et documentation
-/README.md @TON-COMPTE
-/docs/ @TON-COMPTE
-/project-workspaces/ @TON-COMPTE
+# Produit / Documentation
+/README.md @Nimbray
+/docs/ @Nimbray
+/project-workspaces/01_product/ @Nimbray
+
+# Workspaces agents
+/project-workspaces/02_ai/ @Nimbray
+/project-workspaces/03_backend/ @Nimbray
+/project-workspaces/04_frontend/ @Nimbray
+/project-workspaces/05_shared/ @Nimbray
+/project-workspaces/06_validation/ @Nimbray
+/project-workspaces/07_official-source/ @Nimbray
+/project-workspaces/08_agent-inbox/ @Nimbray
+/project-workspaces/09_merge-queue/ @Nimbray
+
+# Source officielle / coordination
+/CURRENT_SOURCE.json @Nimbray
+/SOURCE_OF_TRUTH.md @Nimbray
+/AGENT_CHANGELOG.json @Nimbray
+/AGENTS.md @Nimbray
+/COLLABORATIVE_WORKSPACES.md @Nimbray
+/AUTO_SOURCE_SYNC.md @Nimbray
+
+# GitHub automation
+/.github/ @Nimbray
+/scripts/ @Nimbray
+/package.json @Nimbray
+/package-lock.json @Nimbray
