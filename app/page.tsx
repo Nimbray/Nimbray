@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -32,7 +32,7 @@ function createThread(): Thread {
 
 function createTitle(text: string) {
   const clean = text.replace(/\s+/g, " ").trim();
-  return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean || "Nouvelle discussion";
+  return clean.length > 38 ? `${clean.slice(0, 38)}â€¦` : clean || "Nouvelle discussion";
 }
 
 function threadsForStorage(list: Thread[]) {
@@ -56,22 +56,22 @@ function formatFileSize(size: number) {
 }
 
 function attachmentStateLabel(state: UploadState) {
-  if (state === "processing") return "Préparation";
-  if (state === "ready") return "Prêt à envoyer";
+  if (state === "processing") return "PrÃ©paration";
+  if (state === "ready") return "PrÃªt Ã  envoyer";
   if (state === "sending") return "Envoi en cours";
-  if (state === "sent") return "Envoyé";
+  if (state === "sent") return "EnvoyÃ©";
   return "Erreur";
 }
 
 function attachmentStateIcon(note: AttachmentNote) {
-  if (note.state === "processing") return "…";
+  if (note.state === "processing") return "â€¦";
   if (note.state === "error") return "!";
-  if (note.state === "sent") return "✓";
+  if (note.state === "sent") return "âœ“";
   return note.kind === "image" ? "IMG" : "DOC";
 }
 
 function extractMemoryDirective(text: string) {
-  return text.match(/(?:souviens-toi|souviens toi|mémorise|memorise)\s*(?:que)?\s*:?\s*(.+)/i)?.[1]?.trim() || "";
+  return text.match(/(?:souviens-toi|souviens toi|mÃ©morise|memorise)\s*(?:que)?\s*:?\s*(.+)/i)?.[1]?.trim() || "";
 }
 
 function normalizeShort(text: string) {
@@ -91,7 +91,7 @@ function isSilenceRequest(text: string) {
 
 function isResumeRequest(text: string) {
   const q = normalizeShort(text);
-  return /\b(tu peux repondre|tu peux répondre|reponds|repond moi|reprends|on reprend|on continue|parle|tu peux parler|aide moi|viens|je suis pret|je suis prete)\b/.test(q);
+  return /\b(tu peux repondre|tu peux rÃ©pondre|reponds|repond moi|reprends|on reprend|on continue|parle|tu peux parler|aide moi|viens|je suis pret|je suis prete)\b/.test(q);
 }
 
 function isClientSafetyOverride(text: string, messages: Message[] = []) {
@@ -141,7 +141,7 @@ function AssistantMessage({ message, isLatest }: { message: Message; isLatest: b
         </div>
         {message.sourcesUsed?.length ? (
           <details className="sources-details">
-            <summary>{message.sourcesUsed.length} source(s) utilisée(s)</summary>
+            <summary>{message.sourcesUsed.length} source(s) utilisÃ©e(s)</summary>
             <ul>
               {message.sourcesUsed.map((s, i) => (
                 <li key={`${s.title}-${i}`}>
@@ -223,7 +223,7 @@ export default function HomePage() {
     try {
       localStorage.setItem(THREADS_KEY, JSON.stringify(threadsForStorage(threads)));
     } catch {
-      // Les images sont affichées dans la session mais volontairement allégées au stockage local.
+      // Les images sont affichÃ©es dans la session mais volontairement allÃ©gÃ©es au stockage local.
     }
   }, [threads]);
   useEffect(() => { localStorage.setItem(MEMORY_KEY, JSON.stringify(memory)); }, [memory]);
@@ -285,10 +285,10 @@ export default function HomePage() {
 
   function profileMemoryBlock() {
     return [
-      profileName ? `Prénom utilisateur : ${profileName}` : "",
+      profileName ? `PrÃ©nom utilisateur : ${profileName}` : "",
       profileGoal ? `Objectif principal : ${profileGoal}` : "",
-      profileStyle ? `Style préféré : ${profileStyle}` : "",
-      conversationSummary ? `Résumé durable de conversation : ${conversationSummary}` : ""
+      profileStyle ? `Style prÃ©fÃ©rÃ© : ${profileStyle}` : "",
+      conversationSummary ? `RÃ©sumÃ© durable de conversation : ${conversationSummary}` : ""
     ].filter(Boolean);
   }
 
@@ -298,7 +298,7 @@ export default function HomePage() {
       .slice(-10)
       .map((m) => `${m.role === "user" ? "Utilisateur" : "NimbrayAI"}: ${m.content.slice(0, 180)}`)
       .join("\n");
-    const summary = `Résumé auto local (${new Date().toLocaleDateString()}):\n${last}`;
+    const summary = `RÃ©sumÃ© auto local (${new Date().toLocaleDateString()}):\n${last}`;
     setConversationSummary(summary.slice(0, 1600));
   }
 
@@ -333,7 +333,7 @@ export default function HomePage() {
           canvas.width = Math.max(1, Math.round(img.width * ratio));
           canvas.height = Math.max(1, Math.round(img.height * ratio));
           const ctx = canvas.getContext("2d");
-          if (!ctx) return reject(new Error("Prévisualisation image impossible."));
+          if (!ctx) return reject(new Error("PrÃ©visualisation image impossible."));
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
           resolve(canvas.toDataURL(outputType, 0.82));
@@ -357,7 +357,7 @@ export default function HomePage() {
       id: crypto.randomUUID(),
       name: file.name || "fichier",
       ok: true,
-      message: "Préparation du fichier…",
+      message: "PrÃ©paration du fichierâ€¦",
       state: "processing",
       kind: file.type.startsWith("image/") ? "image" : "document"
     }));
@@ -377,7 +377,7 @@ export default function HomePage() {
           const maxImageMb = 8;
           if (file.size > maxImageMb * 1024 * 1024) throw new Error(`Image trop lourde. Limite actuelle : ${maxImageMb} Mo.`);
           images.push({ id: noteBase.id, name: file.name || "image", type: file.type || "image", size: file.size, dataUrl: await imageFileToDataUrl(file) });
-          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prête. Tu peux l’envoyer ou la retirer." });
+          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prÃªte. Tu peux lâ€™envoyer ou la retirer." });
           continue;
         }
 
@@ -387,9 +387,9 @@ export default function HomePage() {
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data?.ok) throw new Error(data?.error || "Lecture impossible");
         const text = String(data.text || "").trim();
-        if (!text) throw new Error("Aucun texte exploitable trouvé.");
+        if (!text) throw new Error("Aucun texte exploitable trouvÃ©.");
         documents.push({ id: noteBase.id, name: data.name || file.name, type: file.type || "document", content: text, size: data.size || file.size });
-        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prêt. Tu peux l’envoyer, le retirer ou ajouter un message." });
+        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prÃªt. Tu peux lâ€™envoyer, le retirer ou ajouter un message." });
       } catch (error: any) {
         completedNotes.push({ ...noteBase, ok: false, state: "error", message: error?.message || "Lecture impossible." });
       }
@@ -415,7 +415,7 @@ export default function HomePage() {
     if (!customText) {
       setPendingImages([]);
       setPendingDocuments([]);
-      setParseNotes((prev) => prev.map((note) => note.state === "ready" ? { ...note, state: "sending", message: note.kind === "image" ? "Image en cours d’envoi…" : "Document en cours d’envoi…" } : note));
+      setParseNotes((prev) => prev.map((note) => note.state === "ready" ? { ...note, state: "sending", message: note.kind === "image" ? "Image en cours dâ€™envoiâ€¦" : "Document en cours dâ€™envoiâ€¦" } : note));
     }
 
     const memoryDirective = extractMemoryDirective(text);
@@ -430,14 +430,14 @@ export default function HomePage() {
       ...documentsForMessage.map((doc) => ({ id: doc.id, name: doc.name, type: doc.type, size: doc.size, kind: "document" as const }))
     ];
     const attachmentLabel = attachmentSummary.length === 1
-      ? `${attachmentSummary[0].kind === "image" ? "Image" : "Document"} envoyé : ${attachmentSummary[0].name}`
-      : `${attachmentSummary.length} pièces jointes envoyées`;
+      ? `${attachmentSummary[0].kind === "image" ? "Image" : "Document"} envoyÃ© : ${attachmentSummary[0].name}`
+      : `${attachmentSummary.length} piÃ¨ces jointes envoyÃ©es`;
     const visibleUserContent = text || attachmentLabel;
     const imagePromptContext = imagesForMessage.length
-      ? `\n\n[Images jointes par l’utilisateur : ${imagesForMessage.map((img) => `${img.name} (${img.type}, ${Math.round(img.size / 1024)} Ko)`).join(" ; ")}. Analyse visuelle non disponible côté serveur dans cette version : réponds honnêtement, demande une description si nécessaire, et utilise le message texte s’il existe.]`
+      ? `\n\n[Images jointes par lâ€™utilisateur : ${imagesForMessage.map((img) => `${img.name} (${img.type}, ${Math.round(img.size / 1024)} Ko)`).join(" ; ")}. Analyse visuelle non disponible cÃ´tÃ© serveur dans cette version : rÃ©ponds honnÃªtement, demande une description si nÃ©cessaire, et utilise le message texte sâ€™il existe.]`
       : "";
     const documentPromptContext = documentsForMessage.length
-      ? `\n\n[Documents joints disponibles dans les sources locales de cette requête : ${documentsForMessage.map((doc) => `${doc.name} (${Math.round(doc.size / 1024)} Ko)`).join(" ; ")}. Utilise ces sources si elles sont pertinentes.]`
+      ? `\n\n[Documents joints disponibles dans les sources locales de cette requÃªte : ${documentsForMessage.map((doc) => `${doc.name} (${Math.round(doc.size / 1024)} Ko)`).join(" ; ")}. Utilise ces sources si elles sont pertinentes.]`
       : "";
     const userMessage: Message = { role: "user", content: visibleUserContent, images: imagesForMessage.length ? imagesForMessage : undefined, attachments: attachmentSummary.length ? attachmentSummary : undefined };
     const optimisticMessages = [...baseMessages, userMessage];
@@ -456,7 +456,7 @@ export default function HomePage() {
 
     if (isSilenceRequest(text)) {
       setSilenceMode(true);
-      const assistantMessage: Message = { role: "assistant", content: "D’accord, je reste silencieux." };
+      const assistantMessage: Message = { role: "assistant", content: "Dâ€™accord, je reste silencieux." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
       setLoading(false);
       return;
@@ -464,7 +464,7 @@ export default function HomePage() {
 
     if (silenceMode && isResumeRequest(text)) {
       setSilenceMode(false);
-      const assistantMessage: Message = { role: "assistant", content: "Je suis là. On reprend doucement." };
+      const assistantMessage: Message = { role: "assistant", content: "Je suis lÃ . On reprend doucement." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
       setLoading(false);
       return;
@@ -485,26 +485,26 @@ export default function HomePage() {
             projectName: "NimbrayAI",
             activeThreadTitle: active.title,
             currentVersion: "V82",
-            focus: "Collaborative Workspaces : source officielle unique, espaces séparés par agent/conversation, journaux de changements et intégration validée",
+            focus: "Collaborative Workspaces : source officielle unique, espaces sÃ©parÃ©s par agent/conversation, journaux de changements et intÃ©gration validÃ©e",
             conversationSummary
           }
         })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Erreur serveur");
-      const safeContent = typeof data?.content === "string" && data.content.trim() ? data.content.trim() : "Je n’ai pas réussi à générer une réponse correcte cette fois. Reformule en une phrase, et je reprends proprement.";
+      const safeContent = typeof data?.content === "string" && data.content.trim() ? data.content.trim() : "Je nâ€™ai pas rÃ©ussi Ã  gÃ©nÃ©rer une rÃ©ponse correcte cette fois. Reformule en une phrase, et je reprends proprement.";
       const assistantMessage: Message = { role: "assistant", content: safeContent, provider: data.provider, model: data.model, fallbackUsed: data.fallbackUsed, sourcesUsed: data.sourcesUsed };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
       if (documentsForMessage.length) {
         const items = documentsForMessage.map((doc) => ({ id: doc.id, name: doc.name, content: doc.content, size: doc.size, createdAt: Date.now() }));
         setKnowledge((prev) => [...items, ...prev].slice(0, 120));
       }
-      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: true, state: "sent", message: note.kind === "image" ? "Image envoyée avec le message." : "Document envoyé et ajouté aux sources locales." } : note).slice(0, 30));
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: true, state: "sent" as UploadState, message: note.kind === "image" ? "Image envoyÃ©e avec le message." : "Document envoyÃ© et ajoutÃ© aux sources locales." } : note).slice(0, 30));
       refreshStatus();
     } catch (error: any) {
-      const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti là. Réessaie dans quelques secondes." };
+      const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti lÃ . RÃ©essaie dans quelques secondes." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
-      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: false, state: "error", message: "Envoi échoué. Réessaie après vérification de la connexion ou du serveur." } : note).slice(0, 30));
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: false, state: "error", message: "Envoi Ã©chouÃ©. RÃ©essaie aprÃ¨s vÃ©rification de la connexion ou du serveur." } : note).slice(0, 30));
     } finally {
       setLoading(false);
     }
@@ -531,7 +531,7 @@ export default function HomePage() {
         body: JSON.stringify({ workspaceId: cloud.workspaceId, threads, memory, knowledge, profile: { name: profileName, email: profileEmail } })
       });
       const data = await res.json();
-      setCloud((c) => ({ ...c, enabled: !!data.enabled, lastSync: data.updatedAt || new Date().toISOString(), message: data.message || (data.ok ? "Synchronisé." : data.error || "Non synchronisé."), busy: false }));
+      setCloud((c) => ({ ...c, enabled: !!data.enabled, lastSync: data.updatedAt || new Date().toISOString(), message: data.message || (data.ok ? "SynchronisÃ©." : data.error || "Non synchronisÃ©."), busy: false }));
     } catch (e: any) {
       setCloud((c) => ({ ...c, busy: false, message: e?.message || "Erreur de synchronisation." }));
     }
@@ -549,7 +549,7 @@ export default function HomePage() {
         if (data.data.profile?.name) setProfileName(data.data.profile.name);
         if (data.data.profile?.email) setProfileEmail(data.data.profile.email);
       }
-      setCloud((c) => ({ ...c, enabled: !!data.enabled, lastSync: data.updatedAt, message: data.message || (data.data ? "Données restaurées." : "Aucune donnée cloud trouvée."), busy: false }));
+      setCloud((c) => ({ ...c, enabled: !!data.enabled, lastSync: data.updatedAt, message: data.message || (data.data ? "DonnÃ©es restaurÃ©es." : "Aucune donnÃ©e cloud trouvÃ©e."), busy: false }));
     } catch (e: any) {
       setCloud((c) => ({ ...c, busy: false, message: e?.message || "Erreur de restauration." }));
     }
@@ -577,14 +577,14 @@ export default function HomePage() {
       if (Array.isArray(data.knowledge)) setKnowledge(data.knowledge);
       if (data.profile?.name) setProfileName(data.profile.name);
       if (data.profile?.email) setProfileEmail(data.profile.email);
-      setCloud((c) => ({ ...c, message: "Espace importé depuis JSON." }));
+      setCloud((c) => ({ ...c, message: "Espace importÃ© depuis JSON." }));
     } catch (error: any) {
       setCloud((c) => ({ ...c, message: error?.message || "Import impossible." }));
     }
   }
 
   function clearEspaceLocal() {
-    if (!confirm("Supprimer les conversations, mémoires et sources locales de ce navigateur ?")) return;
+    if (!confirm("Supprimer les conversations, mÃ©moires et sources locales de ce navigateur ?")) return;
     const fresh = createThread();
     setThreads([fresh]);
     setActiveId(fresh.id);
@@ -606,10 +606,10 @@ export default function HomePage() {
       const local = JSON.parse(localStorage.getItem(FEEDBACK_KEY) || "[]");
       local.unshift(payload);
       localStorage.setItem(FEEDBACK_KEY, JSON.stringify(local.slice(0, 50)));
-      setFeedbackMessage(data.message || "Feedback enregistré. Merci !");
+      setFeedbackMessage(data.message || "Feedback enregistrÃ©. Merci !");
       setFeedbackText("");
     } catch (e: any) {
-      setFeedbackMessage(e?.message || "Feedback enregistré localement.");
+      setFeedbackMessage(e?.message || "Feedback enregistrÃ© localement.");
     }
   }
 
@@ -634,17 +634,17 @@ export default function HomePage() {
 
   const sendDisabled = (!input.trim() && !pendingImages.length && !pendingDocuments.length) || loading || uploadingFiles;
   const composerStatus = uploadingFiles
-    ? "Préparation des fichiers…"
+    ? "PrÃ©paration des fichiersâ€¦"
     : loading
-      ? "Envoi du message…"
+      ? "Envoi du messageâ€¦"
       : pendingAttachmentCount
-        ? `${pendingAttachmentCount} pièce(s) prête(s) à envoyer`
+        ? `${pendingAttachmentCount} piÃ¨ce(s) prÃªte(s) Ã  envoyer`
         : failedNoteCount
-          ? `${failedNoteCount} erreur(s) à vérifier`
-          : "Prêt";
+          ? `${failedNoteCount} erreur(s) Ã  vÃ©rifier`
+          : "PrÃªt";
 
-  const drawerTitle = drawer === "memory" ? "Mémoire" : drawer === "knowledge" ? "Sources & documents" : drawer === "brain" ? "Cerveau" : drawer === "workspace" ? "Espace" : drawer === "admin" ? "Admin" : drawer === "feedback" ? "Feedback" : drawer === "account" ? "Compte" : "NimbrayAI";
-  const drawerSubtitle = drawer === "memory" ? "Ce que NimbrayAI garde en tête pour mieux t’aider." : drawer === "knowledge" ? "Tes sources alimentent le RAG local et les connaissances." : drawer === "brain" ? "Architecture du cerveau, packs et domaines couverts." : drawer === "workspace" ? "Sauvegarde locale, export, import et cloud optionnel." : drawer === "admin" ? "Diagnostic technique et commandes utiles." : drawer === "feedback" ? "Un retour rapide pour faire progresser NimbrayAI." : drawer === "account" ? "Préférences, style et informations de profil." : "Panneau latéral";
+  const drawerTitle = drawer === "memory" ? "MÃ©moire" : drawer === "knowledge" ? "Sources & documents" : drawer === "brain" ? "Cerveau" : drawer === "workspace" ? "Espace" : drawer === "admin" ? "Admin" : drawer === "feedback" ? "Feedback" : drawer === "account" ? "Compte" : "NimbrayAI";
+  const drawerSubtitle = drawer === "memory" ? "Ce que NimbrayAI garde en tÃªte pour mieux tâ€™aider." : drawer === "knowledge" ? "Tes sources alimentent le RAG local et les connaissances." : drawer === "brain" ? "Architecture du cerveau, packs et domaines couverts." : drawer === "workspace" ? "Sauvegarde locale, export, import et cloud optionnel." : drawer === "admin" ? "Diagnostic technique et commandes utiles." : drawer === "feedback" ? "Un retour rapide pour faire progresser NimbrayAI." : drawer === "account" ? "PrÃ©fÃ©rences, style et informations de profil." : "Panneau latÃ©ral";
 
   return (
     <main className="shell v46-shell">
@@ -674,14 +674,14 @@ export default function HomePage() {
                 <span className="thread-title">{thread.title}</span>
                 <span className="thread-meta">{thread.messages.at(-1)?.content?.slice(0, 52) || "Vide"}</span>
               </button>
-              <button className="thread-delete" onClick={() => deleteThread(thread.id)}>×</button>
+              <button className="thread-delete" onClick={() => deleteThread(thread.id)}>Ã—</button>
             </div>
           ))}
-          {!filteredThreads.length ? <div className="empty compact">Aucune discussion trouvée.</div> : null}
+          {!filteredThreads.length ? <div className="empty compact">Aucune discussion trouvÃ©e.</div> : null}
         </div>
 
         <div className="sidebar-footer">
-          <button className="sidebar-link" onClick={() => setDrawer("memory")}>Mémoire <span>{memory.length}</span></button>
+          <button className="sidebar-link" onClick={() => setDrawer("memory")}>MÃ©moire <span>{memory.length}</span></button>
           <button className="sidebar-link" onClick={() => setDrawer("knowledge")}>Sources <span>{knowledge.length}</span></button>
           <button className="sidebar-link" onClick={() => setDrawer("brain")}>Cerveau</button>
           <button className="sidebar-link" onClick={() => setDrawer("workspace")}>Espace</button>
@@ -699,13 +699,13 @@ export default function HomePage() {
 
       <section className="chat-panel">
         <header className="topbar">
-          <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Ouvrir le menu">☰</button>
+          <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Ouvrir le menu">â˜°</button>
           <div className="topbar-title">
             <h1>{active?.title || "Nouvelle discussion"}</h1>
-            <p>Produit, IA, Backend, Frontend — ensemble.</p>
+            <p>Produit, IA, Backend, Frontend â€” ensemble.</p>
           </div>
           <div className="topbar-actions">
-            <button onClick={() => regenerate()} disabled={loading || !active?.messages.length}>Régénérer</button>
+            <button onClick={() => regenerate()} disabled={loading || !active?.messages.length}>RÃ©gÃ©nÃ©rer</button>
             <button onClick={() => setDrawer("workspace")}>Espace</button>
           </div>
         </header>
@@ -714,7 +714,7 @@ export default function HomePage() {
           {!active?.messages.length ? (
             <div className="welcome clean-welcome">
               <div className="welcome-logo">N</div>
-              <h2>Bonjour, que veux-tu demander à NimbrayAI&nbsp;?</h2>
+              <h2>Bonjour, que veux-tu demander Ã  NimbrayAI&nbsp;?</h2>
               <p className="welcome-minimal-text">Une IA simple, humaine et utile.</p>
             </div>
           ) : (
@@ -753,7 +753,7 @@ export default function HomePage() {
                 <div className="message-row assistant">
                   <div className="assistant-block">
                     <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-                    <div className="message-content thinking"><span className="typing-dots"><span /> <span /> <span /></span><span>NimbrayAI compose sa réponse…</span></div>
+                    <div className="message-content thinking"><span className="typing-dots"><span /> <span /> <span /></span><span>NimbrayAI compose sa rÃ©ponseâ€¦</span></div>
                   </div>
                 </div>
               ) : null}
@@ -764,11 +764,11 @@ export default function HomePage() {
 
         <div className="composer-shell">
           <div className={`composer-panel ${draggingFiles ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); if (!loading && !uploadingFiles) setDraggingFiles(true); }} onDragLeave={() => setDraggingFiles(false)} onDrop={handleComposerDrop}>
-            {draggingFiles ? <div className="drop-hint">Dépose tes pièces jointes ici</div> : null}
+            {draggingFiles ? <div className="drop-hint">DÃ©pose tes piÃ¨ces jointes ici</div> : null}
             <div className="composer">
               <label className={`attach-btn ${uploadingFiles ? "busy" : ""}`} title="Ajouter des images ou fichiers">
                 <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} disabled={uploadingFiles || loading} />
-                {uploadingFiles ? "…" : "＋"}
+                {uploadingFiles ? "â€¦" : "ï¼‹"}
               </label>
               <textarea
                 ref={textareaRef}
@@ -776,14 +776,14 @@ export default function HomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
-                placeholder={pendingAttachmentCount ? "Ajoute une consigne pour accompagner tes fichiers…" : "Écris ton message à NimbrayAI…"}
+                placeholder={pendingAttachmentCount ? "Ajoute une consigne pour accompagner tes fichiersâ€¦" : "Ã‰cris ton message Ã  NimbrayAIâ€¦"}
               />
-              <button className="send-btn" onClick={() => send()} disabled={sendDisabled} aria-busy={loading}>{loading ? "Envoi…" : pendingAttachmentCount && !input.trim() ? "Envoyer fichiers" : "Envoyer"}</button>
+              <button className="send-btn" onClick={() => send()} disabled={sendDisabled} aria-busy={loading}>{loading ? "Envoiâ€¦" : pendingAttachmentCount && !input.trim() ? "Envoyer fichiers" : "Envoyer"}</button>
             </div>
             {(pendingImages.length || pendingDocuments.length || parseNotes.length) ? (
               <div className="attachment-tray" aria-live="polite">
                 <div className="attachment-tray-head">
-                  <strong>{uploadingFiles ? "Préparation des pièces jointes…" : pendingAttachmentCount ? "Pièces jointes prêtes" : failedNoteCount ? "Erreur sur pièce jointe" : "Pièces jointes"}</strong>
+                  <strong>{uploadingFiles ? "PrÃ©paration des piÃ¨ces jointesâ€¦" : pendingAttachmentCount ? "PiÃ¨ces jointes prÃªtes" : failedNoteCount ? "Erreur sur piÃ¨ce jointe" : "PiÃ¨ces jointes"}</strong>
                   <span>{composerStatus}</span>
                 </div>
                 {pendingImages.length || pendingDocuments.length ? (
@@ -791,15 +791,15 @@ export default function HomePage() {
                     {pendingImages.map((image) => (
                       <div key={image.id} className="pending-image ready">
                         <img src={image.dataUrl} alt={image.name} />
-                        <span><strong>{image.name}</strong><small>{formatFileSize(image.size)} · image prête</small></span>
-                        <button type="button" aria-label={`Retirer ${image.name}`} onClick={() => removePendingAttachment(image.id)}>×</button>
+                        <span><strong>{image.name}</strong><small>{formatFileSize(image.size)} Â· image prÃªte</small></span>
+                        <button type="button" aria-label={`Retirer ${image.name}`} onClick={() => removePendingAttachment(image.id)}>Ã—</button>
                       </div>
                     ))}
                     {pendingDocuments.map((doc) => (
                       <div key={doc.id} className="pending-image pending-document ready">
                         <div className="document-thumb">DOC</div>
-                        <span><strong>{doc.name}</strong><small>{formatFileSize(doc.size)} · document prêt</small></span>
-                        <button type="button" aria-label={`Retirer ${doc.name}`} onClick={() => removePendingAttachment(doc.id)}>×</button>
+                        <span><strong>{doc.name}</strong><small>{formatFileSize(doc.size)} Â· document prÃªt</small></span>
+                        <button type="button" aria-label={`Retirer ${doc.name}`} onClick={() => removePendingAttachment(doc.id)}>Ã—</button>
                       </div>
                     ))}
                   </div>
@@ -808,13 +808,13 @@ export default function HomePage() {
                   {parseNotes.slice(0, 6).map((note) => (
                     <div key={note.id} className={`attachment-status ${note.state}`}>
                       <span className="attachment-status-icon">{attachmentStateIcon(note)}</span>
-                      <span><strong>{attachmentStateLabel(note.state)} · {note.name}</strong><small>{note.message}</small></span>
+                      <span><strong>{attachmentStateLabel(note.state)} Â· {note.name}</strong><small>{note.message}</small></span>
                     </div>
                   ))}
                 </div>
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Glisser-déposer, images et fichiers acceptés</div>
+            <div className="composer-hint">EntrÃ©e pour envoyer Â· Shift + EntrÃ©e pour un saut de ligne Â· Glisser-dÃ©poser, images et fichiers acceptÃ©s</div>
           </div>
         </div>
       </section>
@@ -827,13 +827,13 @@ export default function HomePage() {
                 <h3>{drawerTitle}</h3>
                 <p>{drawerSubtitle}</p>
               </div>
-              <button className="thread-delete" onClick={() => setDrawer(null)}>×</button>
+              <button className="thread-delete" onClick={() => setDrawer(null)}>Ã—</button>
             </div>
 
             {drawer === "memory" ? (
               <>
                 <div className="memory-form">
-                  <input value={memoryDraft} onChange={(e) => setMemoryDraft(e.target.value)} placeholder="Ex. J’aime les réponses simples et claires" />
+                  <input value={memoryDraft} onChange={(e) => setMemoryDraft(e.target.value)} placeholder="Ex. Jâ€™aime les rÃ©ponses simples et claires" />
                   <button onClick={addMemory}>Ajouter</button>
                 </div>
                 <div className="memory-list">
@@ -842,7 +842,7 @@ export default function HomePage() {
                       <span>{item}</span>
                       <button onClick={() => removeMemory(item)}>Supprimer</button>
                     </div>
-                  )) : <div className="empty">Aucune mémoire pour le moment.</div>}
+                  )) : <div className="empty">Aucune mÃ©moire pour le moment.</div>}
                 </div>
               </>
             ) : null}
@@ -854,7 +854,7 @@ export default function HomePage() {
                   <strong>Ajouter des sources</strong>
                   <span>TXT, MD, CSV, JSON, code, PDF, DOCX</span>
                 </label>
-                <div className="source-grid-note">Le cerveau V46 regroupe les connaissances en pôles : comportement, savoir stable, action, sécurité, documents et mémoire.</div>
+                <div className="source-grid-note">Le cerveau V46 regroupe les connaissances en pÃ´les : comportement, savoir stable, action, sÃ©curitÃ©, documents et mÃ©moire.</div>
                 {parseNotes.length ? (
                   <div className="parse-notes">
                     {parseNotes.map((note, i) => (
@@ -878,14 +878,14 @@ export default function HomePage() {
 
             {drawer === "brain" ? (
               <div className="settings-box">
-                <div className="admin-card"><strong>Behavior Brain</strong><span>Empathie, humour, micro-dialogues, désescalade, soutien émotionnel et réponses plus chaleureuses.</span></div>
-                <div className="admin-card"><strong>Stable Knowledge Brain</strong><span>Science, culture, sport, langues, histoire, droit général, santé prudente, cuisine et savoirs durables.</span></div>
-                <div className="admin-card"><strong>Action Brain</strong><span>Coaching, organisation, décisions, projets, productivité, apprentissage et passage à l’action.</span></div>
-                <div className="admin-card"><strong>Safety Brain</strong><span>Violence, suicide, illégal, détresse, autodommage, cybersécurité offensive : réponses cadrées et utiles.</span></div>
-                <div className="admin-card"><strong>Document & Memory Brain</strong><span>Documents utilisateur, RAG local, mémoire personnelle et préférences durables.</span></div>
-                <div className="admin-card"><strong>GPT Source Intelligence V76</strong><span>Inspiration des principes GPTs publics : instructions, connaissances, capacités, actions réelles, amorces, tests, publication et vérité.</span></div>
-                <div className="admin-card"><strong>Collaborative Workspaces V82</strong><span>Source officielle unique, espaces séparés par conversation/agent, journaux de changements, handoffs et intégration validée.</span></div>
-                <div className="admin-card"><strong>Capability Matrix</strong><span>Auto, Expert, Code, Projet, Créatif, Coach, Court, Apprendre, Recherche et Sécurité, avec contrôle des contraintes.</span></div>
+                <div className="admin-card"><strong>Behavior Brain</strong><span>Empathie, humour, micro-dialogues, dÃ©sescalade, soutien Ã©motionnel et rÃ©ponses plus chaleureuses.</span></div>
+                <div className="admin-card"><strong>Stable Knowledge Brain</strong><span>Science, culture, sport, langues, histoire, droit gÃ©nÃ©ral, santÃ© prudente, cuisine et savoirs durables.</span></div>
+                <div className="admin-card"><strong>Action Brain</strong><span>Coaching, organisation, dÃ©cisions, projets, productivitÃ©, apprentissage et passage Ã  lâ€™action.</span></div>
+                <div className="admin-card"><strong>Safety Brain</strong><span>Violence, suicide, illÃ©gal, dÃ©tresse, autodommage, cybersÃ©curitÃ© offensive : rÃ©ponses cadrÃ©es et utiles.</span></div>
+                <div className="admin-card"><strong>Document & Memory Brain</strong><span>Documents utilisateur, RAG local, mÃ©moire personnelle et prÃ©fÃ©rences durables.</span></div>
+                <div className="admin-card"><strong>GPT Source Intelligence V76</strong><span>Inspiration des principes GPTs publics : instructions, connaissances, capacitÃ©s, actions rÃ©elles, amorces, tests, publication et vÃ©ritÃ©.</span></div>
+                <div className="admin-card"><strong>Collaborative Workspaces V82</strong><span>Source officielle unique, espaces sÃ©parÃ©s par conversation/agent, journaux de changements, handoffs et intÃ©gration validÃ©e.</span></div>
+                <div className="admin-card"><strong>Capability Matrix</strong><span>Auto, Expert, Code, Projet, CrÃ©atif, Coach, Court, Apprendre, Recherche et SÃ©curitÃ©, avec contrÃ´le des contraintes.</span></div>
               </div>
             ) : null}
 
@@ -896,23 +896,23 @@ export default function HomePage() {
                 <label className="field-label">Email</label>
                 <input className="cloud-input" value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} placeholder="email@exemple.com" />
                 <label className="field-label">Objectif principal</label>
-                <input className="cloud-input" value={profileGoal} onChange={(e) => setProfileGoal(e.target.value)} placeholder="Développer NimbrayAI, apprendre, créer, progresser…" />
-                <label className="field-label">Style préféré</label>
-                <input className="cloud-input" value={profileStyle} onChange={(e) => setProfileStyle(e.target.value)} placeholder="Simple, chaleureux, direct, détaillé, professionnel…" />
+                <input className="cloud-input" value={profileGoal} onChange={(e) => setProfileGoal(e.target.value)} placeholder="DÃ©velopper NimbrayAI, apprendre, crÃ©er, progresserâ€¦" />
+                <label className="field-label">Style prÃ©fÃ©rÃ©</label>
+                <input className="cloud-input" value={profileStyle} onChange={(e) => setProfileStyle(e.target.value)} placeholder="Simple, chaleureux, direct, dÃ©taillÃ©, professionnelâ€¦" />
                 <div className="cloud-actions">
-                  <button className="new-chat-btn" onClick={summarizeActiveConversation}>Résumer la discussion</button>
-                  <button className="new-chat-btn ghost" onClick={exportMemoryProfile}>Exporter mémoire</button>
+                  <button className="new-chat-btn" onClick={summarizeActiveConversation}>RÃ©sumer la discussion</button>
+                  <button className="new-chat-btn ghost" onClick={exportMemoryProfile}>Exporter mÃ©moire</button>
                 </div>
-                <label className="field-label">Résumé durable</label>
-                <textarea className="cloud-input" value={conversationSummary} onChange={(e) => setConversationSummary(e.target.value)} rows={6} placeholder="Préférences, décisions et contexte à retenir…" />
+                <label className="field-label">RÃ©sumÃ© durable</label>
+                <textarea className="cloud-input" value={conversationSummary} onChange={(e) => setConversationSummary(e.target.value)} rows={6} placeholder="PrÃ©fÃ©rences, dÃ©cisions et contexte Ã  retenirâ€¦" />
               </div>
             ) : null}
 
             {drawer === "feedback" ? (
               <div className="settings-box">
-                <textarea className="feedback-input" value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} placeholder="Ce qui fonctionne, ce qu’il faut améliorer, une idée de design, une faille à corriger…" />
+                <textarea className="feedback-input" value={feedbackText} onChange={(e) => setFeedbackText(e.target.value)} placeholder="Ce qui fonctionne, ce quâ€™il faut amÃ©liorer, une idÃ©e de design, une faille Ã  corrigerâ€¦" />
                 <div className="cloud-actions"><button className="new-chat-btn" onClick={submitFeedback}>Envoyer feedback</button></div>
-                <p className="cloud-note">{feedbackMessage || "Ton retour aide à améliorer NimbrayAI."}</p>
+                <p className="cloud-note">{feedbackMessage || "Ton retour aide Ã  amÃ©liorer NimbrayAI."}</p>
               </div>
             ) : null}
 
@@ -921,13 +921,13 @@ export default function HomePage() {
                 <label className="field-label">Espace ID</label>
                 <input className="cloud-input" value={cloud.workspaceId} onChange={(e) => { setCloud((c) => ({ ...c, workspaceId: e.target.value })); localStorage.setItem(WORKSPACE_KEY, e.target.value); }} />
                 <div className="cloud-actions">
-                  <button className="new-chat-btn" onClick={syncToCloud} disabled={cloud.busy}>Sauvegarder côté serveur</button>
+                  <button className="new-chat-btn" onClick={syncToCloud} disabled={cloud.busy}>Sauvegarder cÃ´tÃ© serveur</button>
                   <button className="new-chat-btn ghost" onClick={restoreFromCloud} disabled={cloud.busy}>Restaurer</button>
                   <button className="new-chat-btn ghost" onClick={exportEspace}>Exporter JSON</button>
                   <label className="new-chat-btn ghost import-label"><input type="file" accept="application/json" onChange={(e) => importEspaceFile(e.target.files)} />Importer JSON</label>
                 </div>
-                <p className="cloud-note">{cloud.message || "Tout reste local par défaut. Active Supabase dans .env.local pour la synchronisation serveur."}</p>
-                <p className="cloud-note">Dernière sync : {cloud.lastSync || "aucune"}</p>
+                <p className="cloud-note">{cloud.message || "Tout reste local par dÃ©faut. Active Supabase dans .env.local pour la synchronisation serveur."}</p>
+                <p className="cloud-note">DerniÃ¨re sync : {cloud.lastSync || "aucune"}</p>
               </div>
             ) : null}
 
@@ -936,11 +936,11 @@ export default function HomePage() {
                 <div className="admin-card">
                   <strong>Diagnostic</strong>
                   <span>Provider : {status?.provider || "inconnu"}</span>
-                  <span>Modèle : {status?.model || "inconnu"}</span>
+                  <span>ModÃ¨le : {status?.model || "inconnu"}</span>
                   <span>Ollama : {status?.ollama?.available ? "disponible" : "indisponible"}</span>
-                  <span>Modèles installés : {status?.ollama?.models?.length || 0}</span>
+                  <span>ModÃ¨les installÃ©s : {status?.ollama?.models?.length || 0}</span>
                   <span>Sources locales : {knowledge.length}</span>
-                  <span>Mémoires : {memory.length}</span>
+                  <span>MÃ©moires : {memory.length}</span>
                   <span>Conversations : {threads.length}</span>
                 </div>
                 <div className="admin-card">
@@ -952,7 +952,7 @@ export default function HomePage() {
                 <div className="cloud-actions">
                   <button className="new-chat-btn" onClick={refreshStatus}>Relancer diagnostic</button>
                   <button className="new-chat-btn ghost" onClick={exportEspace}>Exporter workspace</button>
-                  <button className="new-chat-btn danger" onClick={clearEspaceLocal}>Réinitialiser local</button>
+                  <button className="new-chat-btn danger" onClick={clearEspaceLocal}>RÃ©initialiser local</button>
                 </div>
               </div>
             ) : null}
@@ -962,3 +962,4 @@ export default function HomePage() {
     </main>
   );
 }
+
