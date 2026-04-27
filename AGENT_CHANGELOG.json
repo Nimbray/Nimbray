@@ -30,27 +30,24 @@
       ]
     },
     {
-      "version": "84.0.0",
-      "agent": "backend",
-      "branch": "agent/backend/v85-upload-api-real",
+      "version": "85.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v84-v85-chat-attachments",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V85 réelle : solidification de /api/chat pour messages avec pièces jointes, parsing JSON/multipart et erreurs client lisibles.",
+      "summary": "Improve chat attachment upload preview and states",
       "files": [
-        "app/api/chat/route.ts",
-        "package.json",
-        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V85_upload-api-real.md",
-        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V85_chat-attachments.md"
       ],
       "risks": [
-        "Le frontend doit encore envoyer un champ attachments structuré pour exploiter totalement le nouveau chemin backend.",
-        "Le build Next local reste bloqué longtemps sur Creating an optimized production build dans cette archive."
+        "Build not executed in zip environment because dependencies are missing",
+        "PR check requires real Git branch"
       ],
       "tests": [
-        "npm run source:check",
-        "npm run agent:merge-check",
-        "npm run lint",
-        "npm run typecheck"
+        "npm run agent:merge-check"
       ]
     }
   ]
