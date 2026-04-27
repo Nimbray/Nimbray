@@ -1,11 +1,11 @@
 ﻿{
   "project": "Nimbray",
-  "current_version": "85.0.0",
-  "current_codename": "Upload UX Natural Intelligence",
+  "current_version": "87.0.0",
+  "current_codename": "Beta Readiness Premium Brain",
   "source_type": "github",
   "official_branch": "main",
   "repository": "Nimbray/Nimbray",
-  "last_official_commit": "pending-integration-v85",
+  "last_official_commit": "pending-integration-v87",
   "rule": "main is the only official source. All agents must branch from main and merge through pull requests.",
   "agents": {
     "product": {
@@ -29,6 +29,7 @@
     "source_check": "required",
     "agent_merge_check": "required",
     "build": "required",
-    "github_actions": "required"
+    "github_actions": "required",
+    "vercel_deploy": "required"
   }
 }
