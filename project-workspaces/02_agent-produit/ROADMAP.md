@@ -215,3 +215,32 @@ Regrouper les acquis V85-V89 dans une version solide : chat, upload, sources, pr
 - V88 : qualité conversationnelle premium.
 - V89 : onboarding + beta publique.
 - V90 : consolidation et audit plateforme.
+
+---
+
+## Addendum V87 — Beta readiness
+
+### Objectif Produit V87
+
+La V87 prépare une première bêta privée utilisable. Elle doit privilégier la fiabilité des parcours essentiels plutôt que l’ajout de grandes fonctionnalités non stabilisées.
+
+### P0 avant ouverture aux testeurs
+
+- Chat texte utilisable sur desktop et mobile.
+- Upload image/fichier visible avant envoi, transmis ou refusé proprement.
+- États utilisateur clairs : prêt, envoi, succès, erreur.
+- Erreurs distinguées : taille, type, réseau/API, parsing, provider IA.
+- Nimbray reste honnête sur les capacités réellement disponibles.
+- Déploiement Vercel reproductible et rollback possible.
+- Boucle feedback testeur simple.
+
+### Roadmap courte V87-V90
+
+- **V87** : bêta privée utilisable, P0 validés, retours collectés.
+- **V88** : qualité conversationnelle premium et onboarding court.
+- **V89** : sources projet, observabilité bêta et préparation d’une ouverture plus large.
+- **V90** : consolidation plateforme, audit des parcours critiques et trajectoire post-V90.
+
+### Référence détaillée
+
+Le cadrage complet est documenté dans `project-workspaces/02_agent-produit/BETA_READINESS_V87.md`.
