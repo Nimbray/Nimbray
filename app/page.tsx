@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type SourceRef = { title: string; type?: string; url?: string };
 type AttachmentImage = { id: string; name: string; type: string; size: number; dataUrl: string };
+type UploadState = "processing" | "ready" | "sending" | "error";
+type AttachmentNote = { id: string; name: string; ok: boolean; message: string; state: UploadState; kind: "image" | "document" };
 type Message = { role: "user" | "assistant"; content: string; provider?: string; model?: string; fallbackUsed?: boolean; sourcesUsed?: SourceRef[]; images?: AttachmentImage[] };
 type Thread = { id: string; title: string; messages: Message[]; createdAt: number };
 type KnowledgeItem = { id: string; name: string; content: string; createdAt: number; size: number };
@@ -155,8 +157,10 @@ export default function HomePage() {
   const [status, setStatus] = useState<Status | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [parseNotes, setParseNotes] = useState<Array<{ name: string; ok: boolean; message: string }>>([]);
+  const [parseNotes, setParseNotes] = useState<AttachmentNote[]>([]);
   const [pendingImages, setPendingImages] = useState<AttachmentImage[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const pendingAttachmentCount = pendingImages.length + parseNotes.filter((note) => note.state === "ready").length;
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -316,45 +320,69 @@ export default function HomePage() {
 
   async function readFiles(files: FileList | null) {
     if (!files?.length) return;
+    const selectedFiles = Array.from(files);
+    const processingNotes: AttachmentNote[] = selectedFiles.map((file) => ({
+      id: crypto.randomUUID(),
+      name: file.name || "fichier",
+      ok: true,
+      message: "Préparation du fichier…",
+      state: "processing",
+      kind: file.type.startsWith("image/") ? "image" : "document"
+    }));
+
+    setUploadingFiles(true);
+    setParseNotes((prev) => [...processingNotes, ...prev].slice(0, 30));
+
     const items: KnowledgeItem[] = [];
     const images: AttachmentImage[] = [];
-    const notes: Array<{ name: string; ok: boolean; message: string }> = [];
-    for (const file of Array.from(files)) {
+    const completedNotes: AttachmentNote[] = [];
+
+    for (let index = 0; index < selectedFiles.length; index += 1) {
+      const file = selectedFiles[index];
+      const noteBase = processingNotes[index];
       try {
         if (file.type.startsWith("image/")) {
           const maxImageMb = 8;
           if (file.size > maxImageMb * 1024 * 1024) throw new Error(`Image trop lourde. Limite actuelle : ${maxImageMb} Mo.`);
           images.push({ id: crypto.randomUUID(), name: file.name || "image", type: file.type || "image", size: file.size, dataUrl: await imageFileToDataUrl(file) });
-          notes.push({ name: file.name, ok: true, message: "Image prête à être envoyée dans la conversation." });
+          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prête à être envoyée dans la conversation." });
           continue;
         }
 
         const form = new FormData();
         form.append("file", file);
         const response = await fetch("/api/parse-doc", { method: "POST", body: form });
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         if (!response.ok || !data?.ok) throw new Error(data?.error || "Lecture impossible");
         const text = String(data.text || "").trim();
         if (!text) throw new Error("Aucun texte exploitable trouvé.");
         items.push({ id: crypto.randomUUID(), name: data.name || file.name, content: text, size: data.size || file.size, createdAt: Date.now() });
-        notes.push({ name: file.name, ok: true, message: data.warning || "Source ajoutée à la base locale." });
+        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prêt : source ajoutée au cerveau local." });
       } catch (error: any) {
-        notes.push({ name: file.name, ok: false, message: error?.message || "Lecture impossible." });
+        completedNotes.push({ ...noteBase, ok: false, state: "error", message: error?.message || "Lecture impossible." });
       }
     }
+
     if (items.length) setKnowledge((prev) => [...items, ...prev].slice(0, 120));
     if (images.length) setPendingImages((prev) => [...prev, ...images].slice(0, 6));
-    setParseNotes((prev) => [...notes, ...prev].slice(0, 30));
+    setParseNotes((prev) => {
+      const resolvedIds = new Set(completedNotes.map((note) => note.id));
+      return [...completedNotes, ...prev.filter((note) => !resolvedIds.has(note.id))].slice(0, 30);
+    });
+    setUploadingFiles(false);
   }
 
   async function send(customText?: string, overrideMessages?: Message[]) {
     const text = (customText ?? input).trim();
     const imagesForMessage = customText ? [] : pendingImages;
     const baseMessages = overrideMessages || active?.messages || [];
-    if ((!text && !imagesForMessage.length) || !active || loading) return;
+    if ((!text && !imagesForMessage.length) || !active || loading || uploadingFiles) return;
     setLoading(true);
     setInput("");
-    if (!customText) setPendingImages([]);
+    if (!customText) {
+      setPendingImages([]);
+      setParseNotes((prev) => prev.map((note) => note.state === "ready" ? { ...note, state: "sending", message: note.kind === "image" ? "Image envoyée avec le message." : "Source disponible pour la réponse." } : note));
+    }
 
     const memoryDirective = extractMemoryDirective(text);
     const nextMemory = memoryDirective ? Array.from(new Set([memoryDirective, ...memory])).slice(0, 60) : memory;
@@ -426,6 +454,7 @@ export default function HomePage() {
       const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti là. Réessaie dans quelques secondes." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
     } finally {
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, state: "ready" } : note).slice(0, 30));
       setLoading(false);
     }
   }
@@ -654,9 +683,9 @@ export default function HomePage() {
         <div className="composer-shell">
           <div className="composer-panel">
             <div className="composer">
-              <label className="attach-btn" title="Ajouter des sources">
-                <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} />
-                ＋
+              <label className={`attach-btn ${uploadingFiles ? "busy" : ""}`} title="Ajouter des images ou fichiers">
+                <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} disabled={uploadingFiles || loading} />
+                {uploadingFiles ? "…" : "＋"}
               </label>
               <textarea
                 ref={textareaRef}
@@ -666,20 +695,36 @@ export default function HomePage() {
                 rows={1}
                 placeholder="Écris ton message à NimbrayAI…"
               />
-              <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading}>Envoyer</button>
+              <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading || uploadingFiles}>{loading ? "Envoi…" : "Envoyer"}</button>
             </div>
-            {pendingImages.length ? (
-              <div className="pending-images">
-                {pendingImages.map((image) => (
-                  <div key={image.id} className="pending-image">
-                    <img src={image.dataUrl} alt={image.name} />
-                    <span>{image.name}</span>
-                    <button type="button" onClick={() => setPendingImages((prev) => prev.filter((item) => item.id !== image.id))}>×</button>
+            {(pendingImages.length || parseNotes.length) ? (
+              <div className="attachment-tray" aria-live="polite">
+                <div className="attachment-tray-head">
+                  <strong>{uploadingFiles ? "Préparation des pièces jointes…" : pendingAttachmentCount ? "Pièces jointes prêtes" : "Pièces jointes"}</strong>
+                  <span>{pendingAttachmentCount} prête(s)</span>
+                </div>
+                {pendingImages.length ? (
+                  <div className="pending-images">
+                    {pendingImages.map((image) => (
+                      <div key={image.id} className="pending-image ready">
+                        <img src={image.dataUrl} alt={image.name} />
+                        <span>{image.name}<small>{Math.max(1, Math.round(image.size / 1024))} Ko · prêt</small></span>
+                        <button type="button" aria-label={`Retirer ${image.name}`} onClick={() => setPendingImages((prev) => prev.filter((item) => item.id !== image.id))}>×</button>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : null}
+                <div className="attachment-status-list">
+                  {parseNotes.slice(0, 4).map((note) => (
+                    <div key={note.id} className={`attachment-status ${note.state}`}>
+                      <span className="attachment-status-icon">{note.state === "processing" ? "…" : note.state === "error" ? "!" : note.kind === "image" ? "IMG" : "DOC"}</span>
+                      <span><strong>{note.name}</strong><small>{note.message}</small></span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images acceptées</div>
+            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images et fichiers acceptés</div>
           </div>
         </div>
       </section>
@@ -723,7 +768,7 @@ export default function HomePage() {
                 {parseNotes.length ? (
                   <div className="parse-notes">
                     {parseNotes.map((note, i) => (
-                      <div key={`${note.name}-${i}`} className={note.ok ? "parse-note ok" : "parse-note warn"}>
+                      <div key={note.id || `${note.name}-${i}`} className={note.ok ? "parse-note ok" : "parse-note warn"}>
                         <strong>{note.name}</strong>
                         <span>{note.message}</span>
                       </div>

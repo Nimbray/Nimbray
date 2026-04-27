@@ -28,6 +28,27 @@
         "npm run source:check",
         "npm run agent:merge-check"
       ]
+    },
+    {
+      "version": "85.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v84-v85-chat-attachments",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "Improve chat attachment upload preview and states",
+      "files": [
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V85_chat-attachments.md"
+      ],
+      "risks": [
+        "Build not executed in zip environment because dependencies are missing",
+        "PR check requires real Git branch"
+      ],
+      "tests": [
+        "npm run agent:merge-check"
+      ]
     }
   ]
 }
