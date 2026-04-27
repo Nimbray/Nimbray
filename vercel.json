@@ -1,15 +1,6 @@
-{
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install --no-audit --no-fund",
-  "regions": ["cdg1"],
-  "functions": {
-    "app/api/chat/route.ts": {
-      "maxDuration": 60
-    },
-    "app/api/parse-doc/route.ts": {
-      "maxDuration": 60
-    }
-  }
+﻿{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack enable && pnpm install --no-frozen-lockfile",
+  "buildCommand": "corepack enable && pnpm exec next build",
+  "framework": "nextjs"
 }
