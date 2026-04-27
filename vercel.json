@@ -1,5 +1,5 @@
 {
-  "installCommand": "corepack enable && yarn install --ignore-engines",
-  "buildCommand": "yarn build",
+  "installCommand": "npm ci --registry=https://registry.npmjs.org/ --no-audit --no-fund --fetch-retries=5 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=180000 --fetch-timeout=300000",
+  "buildCommand": "npm run deploy:check && npm run build",
   "framework": "nextjs"
 }
