@@ -1,28 +1,28 @@
 ﻿{
   "project": "Nimbray",
-  "current_version": "87.0.0",
-  "current_codename": "Beta Readiness Premium Brain",
+  "current_version": "89.0.0",
+  "current_codename": "Knowledge Router & UI Encoding Fix",
   "source_type": "github",
   "official_branch": "main",
   "repository": "Nimbray/Nimbray",
-  "last_official_commit": "pending-integration-v87",
+  "last_official_commit": "pending-integration-v89",
   "rule": "main is the only official source. All agents must branch from main and merge through pull requests.",
   "agents": {
     "product": {
       "workspace": "project-workspaces/02_agent-produit",
-      "status": "merged"
+      "status": "active"
     },
     "ai": {
       "workspace": "project-workspaces/03_agent-ia",
-      "status": "merged"
+      "status": "active"
     },
     "backend": {
       "workspace": "project-workspaces/04_agent-backend",
-      "status": "merged"
+      "status": "active"
     },
     "frontend": {
       "workspace": "project-workspaces/05_agent-frontend",
-      "status": "merged"
+      "status": "active"
     }
   },
   "validation": {
@@ -30,6 +30,8 @@
     "agent_merge_check": "required",
     "build": "required",
     "github_actions": "required",
-    "vercel_deploy": "required"
+    "vercel_deploy": "required",
+    "groq_provider": "required",
+    "knowledge_base": "required"
   }
 }
