@@ -454,7 +454,13 @@ export default function HomePage() {
       const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti là. Réessaie dans quelques secondes." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
     } finally {
-      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, state: "ready" } : note).slice(0, 30));
+      setParseNotes((prev): AttachmentNote[] =>
+        prev
+          .map((note): AttachmentNote =>
+            note.state === "sending" ? { ...note, state: "ready" as UploadState } : note
+          )
+          .slice(0, 30)
+      );
       setLoading(false);
     }
   }
