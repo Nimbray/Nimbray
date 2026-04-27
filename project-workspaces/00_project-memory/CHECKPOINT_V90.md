@@ -1,81 +1,39 @@
-# CHECKPOINT V90 — Intelligent Project Brain
+# CHECKPOINT V90 — Final Polish
 
-## Objectif
+Date : 2026-04-27  
+Branche : `integration/v90-final-polish`  
+Rôle : Agent IA / Intégration
 
-V90 transforme NimbrayAI en cerveau projet plus intelligent avec deux couches propres :
+## État actuel
 
-1. **Provider Router** : choisit et sécurise le moteur IA.
-2. **Knowledge Router** : choisit et sécurise les sources de contexte.
+Nimbray est en **V90 Final Polish**. Le travail d’intégration vise à aligner le cerveau projet avec l’état actuel au lieu de laisser ressortir les anciens jalons V74/V76 comme version active.
 
-## Provider Router
+## Sources mémoire prioritaires
 
-Fichier : `lib/provider-router.ts`
+1. `project-workspaces/00_project-memory/CHECKPOINT_V90.md`
+2. `CURRENT_SOURCE.json`
+3. `AGENT_CHANGELOG.json`
 
-Le router sait gérer :
+Ces sources doivent passer avant les anciennes notes historiques quand Nimbray répond à une question sur l’état du projet.
 
-- `demo` : fallback Vercel garanti, sans clé API ;
-- `groq` : provider cloud rapide ;
-- `ollama` : provider local utile pour projet, fichiers et autonomie ;
-- `openrouter` : fallback cloud optionnel si configuré.
+## Décisions V90
 
-Ordre logique :
+- Répondre avec l’état **V90 actuel** aux demandes du type “Résume l’état actuel du projet Nimbray”.
+- Conserver l’upload image actuel côté UI sans prétendre faire une analyse visuelle serveur.
+- Documenter clairement que l’analyse vision serveur est prévue pour **V91**.
+- Améliorer les réponses émotionnelles/personnelles avec un ton naturel, sobre, sans formule répétitive comme “je suis là pour toi”.
+- Réduire les questions en rafale : une seule ouverture douce suffit dans les réponses personnelles.
+- Ne pas casser `/api/chat`, `/api/status`, `/api/health`, `/api/parse-doc` ni Vercel.
 
-- provider demandé ou configuré ;
-- Ollama pour les demandes projet/fichiers/locales ;
-- Groq pour les réponses cloud rapides ;
-- OpenRouter si clé disponible ;
-- Demo en dernier fallback.
+## Validation attendue
 
-Chaque réponse peut exposer :
-
-- `provider` ;
-- `model` ;
-- `fallbackUsed` ;
-- `fallbackChain` ;
-- `unavailableProviders`.
-
-## Knowledge Router
-
-Fichier : `lib/knowledge-router.ts`
-
-Le router sait orienter le contexte vers :
-
-- `user-files` : fichiers utilisateur et documents uploadés ;
-- `local-memory` : connaissance locale / mémoire projet ;
-- `hybrid` : fichiers + mémoire + sources gratuites ;
-- `external` : sources gratuites externes ;
-- `none` : pas de contexte ajouté quand la demande est simple.
-
-## Routes protégées
-
-V90 garde les routes critiques :
-
-- `/api/chat` : utilise Provider Router + Knowledge Router ;
-- `/api/status` : expose l’état V90 ;
-- `/api/health` : ajouté pour monitoring simple ;
-- `/api/parse-doc` : inchangé, compatible upload ;
-- `/api/cloud/status` : non modifié ;
-- `/api/platform/status` : non modifié.
-
-## Compatibilité Vercel
-
-- Pas de dépendance lourde ajoutée.
-- Pas de service local obligatoire.
-- Pas de streaming imposé.
-- Pas de stockage serveur obligatoire.
-- Fallback demo conservé pour éviter les erreurs bloquantes en production.
-
-## Risques restants
-
-- Ollama n’est disponible sur Vercel que si un endpoint externe est configuré, pas via `127.0.0.1`.
-- Les sources web gratuites dépendent des APIs publiques et peuvent échouer ponctuellement.
-- La vision serveur n’est pas encore active : les images uploadées sont reçues côté conversation mais non analysées visuellement.
-
-## Validation V90
-
-Tests effectués :
-
+- `npm install --no-audit --no-fund`
 - `npm run typecheck`
 - `npm run build`
+- Test prod : `Résume l’état actuel du projet Nimbray`
+- Test prod : `je me sens un peu seul`
+- Test upload image
 
-Résultat attendu : build Next.js OK, routes API compatibles serverless.
+## Préparation V91
+
+V91 doit ajouter une vraie analyse vision serveur via un provider compatible image. Tant que ce n’est pas livré, Nimbray doit être transparent : il reçoit et affiche l’image, mais demande une description pour raisonner dessus.

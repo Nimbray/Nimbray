@@ -1,12 +1,12 @@
-﻿{
+{
   "project": "NimbrayAI",
   "activeVersion": "90.0.0",
-  "activeCodename": "V84 GitHub Agent Automation",
-  "activeArchive": "NimbrayAI_V84_GitHub_Agent_Automation.zip",
-  "sourceType": "github-ready-zip",
+  "activeCodename": "V90 Final Polish",
+  "activeArchive": "GitHub main + PR integration/v90-final-polish",
+  "sourceType": "github-main-pr",
   "officialBranch": "main",
   "sourcePolicy": "GitHub main is the official living source. Every agent branches from main, documents work, opens a pull request, and only the integrator promotes an official version.",
-  "updatedAt": "2026-04-26",
+  "updatedAt": "2026-04-27",
   "requiredAgentStartCommand": "npm run agent:start -- --agent <frontend|backend|ia|produit>",
   "promotionCommand": "npm run source:promote -- --version <version> --zip <archive.zip> --notes \"<summary>\"",
   "agentWorkspaceCommand": "npm run source:agent -- --agent <frontend|backend|ia|produit|integrateur>",
@@ -20,9 +20,10 @@
   "guardrails": [
     "Never push directly to main.",
     "Start every agent branch from the latest main.",
-    "Each agent must create or update a handoff in its workspace.",
-    "Each pull request must pass GitHub Actions before merge.",
-    "Only the integrator updates CURRENT_SOURCE.json for official promotion.",
-    "Every agent must read AGENT_CHANGELOG.json before changing shared files."
+    "Prioritize project-workspaces/00_project-memory/CHECKPOINT_V90.md, CURRENT_SOURCE.json and AGENT_CHANGELOG.json for project memory.",
+    "Do not reintroduce V74/V76 as the current project state.",
+    "Document that server-side vision analysis is planned for V91.",
+    "Do not break /api/chat, /api/status, /api/health, /api/parse-doc or Vercel.",
+    "Every pull request must pass install, typecheck and build before merge."
   ]
 }

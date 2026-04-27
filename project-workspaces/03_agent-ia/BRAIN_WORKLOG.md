@@ -8,28 +8,22 @@ Améliorer le cerveau de NimbrayAI : naturel, raisonnement, vérité, sécurité
 
 Toute nouvelle règle de cerveau doit être courte, utile, testable et compatible avec les règles existantes.
 
-## V90 — Intelligent Project Brain
+## 2026-04-27 — V90 Final Polish — Agent IA / Intégration
 
-### Changements livrés
+Branche : `integration/v90-final-polish`
 
-- Ajout d’un `Provider Router` dédié dans `lib/provider-router.ts`.
-- Routage intelligent entre `demo`, `Groq`, `Ollama` et `OpenRouter`, avec ordre de fallback déterministe.
-- Sélection renforcée d’Ollama pour les demandes projet/fichiers/locales, Groq pour les réponses cloud rapides, OpenRouter comme fallback optionnel, puis mode démo Vercel.
-- Ajout d’un `Knowledge Router` dans `lib/knowledge-router.ts`.
-- Routage knowledge entre fichiers utilisateur, mémoire projet locale, sources gratuites externes et mode hybride.
-- `/api/chat` utilise maintenant `routeProvider()` et `routeKnowledge()` au lieu de choisir directement un provider dans la route.
-- `/api/status` expose l’état du Provider Router et les flags V90.
-- Ajout de `/api/health` pour vérifier rapidement chat/status/parse-doc/provider router côté Vercel.
+### Changements
+- Alignement du cerveau projet sur **V90 Final Polish**.
+- Priorisation mémoire : `CHECKPOINT_V90.md`, `CURRENT_SOURCE.json`, `AGENT_CHANGELOG.json`.
+- Remplacement des références de modèle/réponse qui présentaient V72/V74/V76 comme état courant.
+- Réponse projet enrichie avec la préparation **V91 vision serveur**.
+- Réponses de solitude rendues plus naturelles, sans formule répétitive ni questions en rafale.
+- Conservation du comportement upload image actuel : réception/preview côté UI, transparence côté serveur.
 
-### Principes V90
-
-- Ne jamais casser la réponse si un provider est absent : fallback propre vers le provider suivant.
-- Ne jamais exiger Groq ou Ollama pour que le site fonctionne : `demo` reste le dernier filet de sécurité.
-- Prioriser les fichiers utilisateur quand la question parle explicitement du document ou de l’upload.
-- Prioriser la mémoire projet locale quand la question concerne Nimbray, GitHub, Vercel, API, agents ou workspaces.
-- Garder les sources invisibles sauf demande explicite de l’utilisateur.
-
-### Tests effectués
-
+### Tests prévus
+- `npm install --no-audit --no-fund`
 - `npm run typecheck`
 - `npm run build`
+- API : `Résume l’état actuel du projet Nimbray`
+- API : `je me sens un peu seul`
+- Upload image UI

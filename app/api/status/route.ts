@@ -1,25 +1,33 @@
 import { NextResponse } from "next/server";
 import { routingSummary } from "../../../lib/model-router";
-import { providerStatus } from "../../../lib/provider-router";
+
+async function fetchOllamaModels() {
+  const baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
+  try {
+    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store" });
+    if (!res.ok) return { available: false, models: [] as string[], error: `Ollama ${res.status}` };
+    const data = await res.json();
+    const models = (data?.models || []).map((m: any) => m.name).filter(Boolean);
+    return { available: true, models, error: "" };
+  } catch (error: any) {
+    return { available: false, models: [] as string[], error: error?.message || "Ollama indisponible" };
+  }
+}
 
 export async function GET() {
-  const providerRouter = await providerStatus();
-  const activeProvider = providerRouter.activeProvider;
+  const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
+  const ollama = await fetchOllamaModels();
   return NextResponse.json({
     ok: true,
-    provider: activeProvider,
+    provider,
     model:
-      activeProvider === "ollama" ? providerRouter.providers.ollama.model :
-      activeProvider === "groq" ? providerRouter.providers.groq.model :
-      activeProvider === "openrouter" ? providerRouter.providers.openrouter.model :
-      "nimbray-demo-engine-v90",
+      provider === "ollama" ? process.env.OLLAMA_MODEL || process.env.OLLAMA_MODEL_GENERAL || "qwen2.5:3b" :
+      provider === "groq" ? process.env.GROQ_MODEL || "llama-3.1-8b-instant" :
+      provider === "openrouter" ? process.env.OPENROUTER_MODEL || "openrouter/auto" :
+      "nimbray-demo-engine-v40",
     router: routingSummary(),
-    providerRouter,
-    ollama: providerRouter.providers.ollama,
+    ollama,
     features: {
-      v90ProviderRouter: true,
-      v90KnowledgeRouter: true,
-      intelligentFallbacks: true,
       v40ReleaseCandidate: true,
       consolidatedLocalBrain: true,
       v23DialoguePersonality: true,
