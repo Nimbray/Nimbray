@@ -199,6 +199,204 @@ function groqFriendlyError(raw: string) {
 }
 
 
+
+type ChatAttachment = {
+  id?: string;
+  name: string;
+  type: string;
+  size: number;
+  kind: "image" | "document";
+  text?: string;
+};
+
+function isRecord(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function errorResponse(message: string, status: number, code: string, requestId: string, details?: Record<string, unknown>) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: message,
+      code,
+      requestId,
+      apiError: apiErrorPayload(message, code, requestId, details)
+    },
+    { status }
+  );
+}
+
+async function readChatBody(req: Request) {
+  const contentType = req.headers.get("content-type") || "";
+
+  if (contentType.includes("multipart/form-data")) {
+    let form: FormData;
+    try {
+      form = await req.formData();
+    } catch {
+      throw new ChatRequestError("Payload multipart invalide.", 400, "MULTIPART_PAYLOAD_INVALID");
+    }
+
+    const rawMessages = form.get("messages");
+    const rawMessage = form.get("message");
+    const rawMemory = form.get("memory");
+    const rawUserKnowledge = form.get("userKnowledge");
+    const rawResponseMode = form.get("responseMode");
+    const rawProjectContext = form.get("projectContext");
+    const rawAttachments = form.get("attachments");
+
+    const parseJsonField = (value: FormDataEntryValue | null, fallback: any) => {
+      if (typeof value !== "string" || !value.trim()) return fallback;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return fallback;
+      }
+    };
+
+    const messages = typeof rawMessages === "string" && rawMessages.trim()
+      ? parseJsonField(rawMessages, [])
+      : typeof rawMessage === "string" && rawMessage.trim()
+      ? [{ role: "user", content: rawMessage }]
+      : [];
+
+    const declaredAttachments = parseJsonField(rawAttachments, []);
+    const fileEntries = Array.from(form.entries()).filter(([, value]) => typeof File !== "undefined" && value instanceof File);
+    const fileAttachments = await Promise.all(
+      fileEntries.map(async ([field, value]) => {
+        const file = value as File;
+        const type = file.type || "application/octet-stream";
+        const canReadText = type.startsWith("text/") || ["application/json", "text/markdown", "text/csv"].includes(type);
+        const text = canReadText ? (await file.text()).slice(0, 12000) : undefined;
+        return {
+          id: field,
+          name: file.name || field,
+          type,
+          size: file.size || 0,
+          kind: type.startsWith("image/") ? "image" : "document",
+          ...(text ? { text } : {})
+        };
+      })
+    );
+
+    return {
+      messages,
+      memory: parseJsonField(rawMemory, []),
+      userKnowledge: parseJsonField(rawUserKnowledge, []),
+      responseMode: typeof rawResponseMode === "string" ? rawResponseMode : "auto",
+      projectContext: parseJsonField(rawProjectContext, undefined),
+      attachments: [...(Array.isArray(declaredAttachments) ? declaredAttachments : []), ...fileAttachments]
+    };
+  }
+
+  if (contentType.includes("application/json") || !contentType || contentType === "unknown") {
+    try {
+      return await req.json();
+    } catch {
+      throw new ChatRequestError("Requête chat invalide : le JSON envoyé n’est pas lisible.", 400, "INVALID_JSON");
+    }
+  }
+
+  throw new ChatRequestError("Type de contenu non supporté pour /api/chat.", 415, "UNSUPPORTED_CONTENT_TYPE", { contentType: contentType.split(";")[0] });
+}
+
+function normalizeMessages(value: unknown): ChatMessage[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!isRecord(item)) return null;
+      const role = item.role === "assistant" || item.role === "system" ? item.role : "user";
+      const content = typeof item.content === "string" ? item.content : "";
+      return content.trim() ? ({ role, content } as ChatMessage) : null;
+    })
+    .filter(Boolean) as ChatMessage[];
+}
+
+function normalizeAttachments(value: unknown): ChatAttachment[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => {
+      if (!isRecord(item)) return null;
+      const type = String(item.type || item.mimeType || "application/octet-stream").toLowerCase();
+      const name = String(item.name || item.filename || `attachment-${index + 1}`);
+      const size = Number(item.size || item.sizeBytes || 0);
+      const text = typeof item.text === "string" ? item.text.slice(0, 12000) : undefined;
+      return {
+        id: String(item.id || `attachment-${index + 1}`),
+        name,
+        type,
+        size: Number.isFinite(size) ? Math.max(0, size) : 0,
+        kind: type.startsWith("image/") ? "image" : "document",
+        ...(text ? { text } : {})
+      } as ChatAttachment;
+    })
+    .filter(Boolean) as ChatAttachment[];
+}
+
+function enforceAttachmentLimits(attachments: ChatAttachment[]) {
+  const maxFiles = Number(process.env.MAX_UPLOAD_FILES || 5);
+  const maxFileBytes = Number(process.env.MAX_UPLOAD_FILE_SIZE_MB || 10) * 1024 * 1024;
+  const maxTotalBytes = Number(process.env.MAX_UPLOAD_TOTAL_SIZE_MB || 20) * 1024 * 1024;
+
+  if (attachments.length > maxFiles) {
+    throw new ChatRequestError("Trop de pièces jointes envoyées.", 413, "TOO_MANY_ATTACHMENTS", { maxFiles });
+  }
+
+  let total = 0;
+  for (const attachment of attachments) {
+    if (attachment.size <= 0) {
+      throw new ChatRequestError("Un fichier envoyé est vide.", 400, "EMPTY_FILE", { name: attachment.name });
+    }
+    if (attachment.size > maxFileBytes) {
+      throw new ChatRequestError("Un fichier dépasse la limite autorisée.", 413, "UPLOAD_TOO_LARGE", { maxFileSizeMb: Number(process.env.MAX_UPLOAD_FILE_SIZE_MB || 10) });
+    }
+    if (!isSupportedAttachmentType(attachment.type)) {
+      throw new ChatRequestError("Type de fichier non supporté.", 415, "UNSUPPORTED_FILE_TYPE", { type: attachment.type });
+    }
+    total += attachment.size;
+  }
+
+  if (total > maxTotalBytes) {
+    throw new ChatRequestError("Le total des pièces jointes dépasse la limite autorisée.", 413, "UPLOAD_TOTAL_TOO_LARGE", { maxTotalSizeMb: Number(process.env.MAX_UPLOAD_TOTAL_SIZE_MB || 20) });
+  }
+}
+
+function attachmentPublicMeta(attachments: ChatAttachment[]) {
+  return attachments.map((item) => ({
+    id: item.id,
+    name: item.name,
+    type: item.type,
+    size: item.size,
+    kind: item.kind,
+    hasText: !!item.text
+  }));
+}
+
+function hasAttachmentSignal(latestUser: string, attachments: ChatAttachment[]) {
+  return attachments.length > 0 || /\[(Images?|Fichiers?|Pièces jointes?) jointes?/i.test(latestUser);
+}
+
+function attachmentGuidance(attachments: ChatAttachment[]) {
+  if (!attachments.length) return "";
+  const images = attachments.filter((item) => item.kind === "image");
+  const documents = attachments.filter((item) => item.kind !== "image");
+  const parts: string[] = [];
+
+  if (images.length) {
+    parts.push(`[Images jointes par l’utilisateur : ${images.map((item) => item.name).join(", ")} — analyse vision directe non disponible côté serveur.]`);
+  }
+
+  for (const doc of documents) {
+    if (doc.text) {
+      parts.push(`[Document joint : ${doc.name}]\n${doc.text.slice(0, 4000)}`);
+    } else {
+      parts.push(`[Document joint : ${doc.name} — contenu texte non extrait.]`);
+    }
+  }
+
+  return `\n\n${parts.join("\n\n")}`;
+}
+
 async function callJson(url: string, init: RequestInit) {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -297,16 +495,6 @@ export async function POST(req: Request) {
   const startedAt = Date.now();
   const contentType = req.headers.get("content-type") || "unknown";
   try {
-    const body = await req.json();
-    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean);
-    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni." }, { status: 400 });
-
-    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
-    const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
-    const latestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
-    const responseMode = inferResponseMode(latestUser, (body?.responseMode || "auto") as ResponseMode);
-    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
-    if (hasImageAttachment) {
     const body = await readChatBody(req);
     if (!isRecord(body)) return errorResponse("Requête chat invalide.", 400, "INVALID_BODY", requestId);
 
