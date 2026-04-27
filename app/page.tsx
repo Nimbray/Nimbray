@@ -377,7 +377,7 @@ export default function HomePage() {
           const maxImageMb = 8;
           if (file.size > maxImageMb * 1024 * 1024) throw new Error(`Image trop lourde. Limite actuelle : ${maxImageMb} Mo.`);
           images.push({ id: noteBase.id, name: file.name || "image", type: file.type || "image", size: file.size, dataUrl: await imageFileToDataUrl(file) });
-          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prÃªte. Tu peux lâ€™envoyer ou la retirer." });
+          completedNotes.push({ ...noteBase, ok: true, state: "ready" as UploadState, message: "Image prÃªte. Tu peux lâ€™envoyer ou la retirer." });
           continue;
         }
 
@@ -389,9 +389,9 @@ export default function HomePage() {
         const text = String(data.text || "").trim();
         if (!text) throw new Error("Aucun texte exploitable trouvÃ©.");
         documents.push({ id: noteBase.id, name: data.name || file.name, type: file.type || "document", content: text, size: data.size || file.size });
-        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prÃªt. Tu peux lâ€™envoyer, le retirer ou ajouter un message." });
+        completedNotes.push({ ...noteBase, ok: true, state: "ready" as UploadState, message: data.warning || "Document prÃªt. Tu peux lâ€™envoyer, le retirer ou ajouter un message." });
       } catch (error: any) {
-        completedNotes.push({ ...noteBase, ok: false, state: "error", message: error?.message || "Lecture impossible." });
+        completedNotes.push({ ...noteBase, ok: false, state: "error" as UploadState, message: error?.message || "Lecture impossible." });
       }
     }
 
@@ -499,12 +499,12 @@ export default function HomePage() {
         const items = documentsForMessage.map((doc) => ({ id: doc.id, name: doc.name, content: doc.content, size: doc.size, createdAt: Date.now() }));
         setKnowledge((prev) => [...items, ...prev].slice(0, 120));
       }
-      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: true, state: "sent" as UploadState, message: note.kind === "image" ? "Image envoyÃ©e avec le message." : "Document envoyÃ© et ajoutÃ© aux sources locales." } : note).slice(0, 30));
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: true, state: "sent" as UploadState as UploadState, message: note.kind === "image" ? "Image envoyÃ©e avec le message." : "Document envoyÃ© et ajoutÃ© aux sources locales." } : note).slice(0, 30));
       refreshStatus();
     } catch (error: any) {
       const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti lÃ . RÃ©essaie dans quelques secondes." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
-      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: false, state: "error", message: "Envoi Ã©chouÃ©. RÃ©essaie aprÃ¨s vÃ©rification de la connexion ou du serveur." } : note).slice(0, 30));
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: false, state: "error" as UploadState, message: "Envoi Ã©chouÃ©. RÃ©essaie aprÃ¨s vÃ©rification de la connexion ou du serveur." } : note).slice(0, 30));
     } finally {
       setLoading(false);
     }
@@ -962,4 +962,5 @@ export default function HomePage() {
     </main>
   );
 }
+
 
