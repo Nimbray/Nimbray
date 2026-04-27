@@ -186,13 +186,12 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
   if (exactAny(q, ["bonjour", "salut", "coucou", "hey", "hello"]) && isShort(q, 3)) {
     return {
       content: pick([
-        "Bonjour ! Content de te retrouver.",
-        "Salut. On part sur quelque chose de léger ou on avance sur un sujet précis ?",
-        "Hey. On reprend tranquillement.",
-        "Bonjour. Tu veux discuter un peu ou passer à l’action ?",
-        "Salut ! Belle énergie, sans pression."
+        "Bonjour ! Comment tu vas aujourd’hui ?",
+        "Salut. Content de te revoir.",
+        "Hey. On reprend tranquillement ?",
+        "Bonjour. Tu veux discuter un peu ou avancer sur quelque chose ?"
       ], q + history.join("|")),
-      intent: "v87-greeting-natural",
+      intent: "v71-3-greeting-natural",
       confidence: "high",
       shouldIntercept: true
     };
@@ -239,19 +238,6 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
     };
   }
 
-  if (hasAny(q, ["je vais mal", "je suis triste", "je suis perdu", "je suis perdue", "j ai peur", "je suis angoisse", "je suis angoissée", "je stresse", "j ai honte", "je suis nul", "je suis nulle", "je me sens vide"])) {
-    return {
-      content: pick([
-        "Je comprends que ce soit lourd. On peut y aller doucement : commence par me dire ce qui domine là maintenant — tristesse, peur, fatigue ou colère ?",
-        "Ça a l’air vraiment difficile à porter. Pas besoin de tout expliquer d’un coup ; on peut juste prendre le morceau le plus urgent.",
-        "Je te lis. Quand ça déborde, le mieux c’est de réduire la pression : respire un instant, puis dis-moi ce qui te fait le plus mal maintenant."
-      ], q + history.join("|")),
-      intent: "v87-emotional-personal",
-      confidence: "high",
-      shouldIntercept: true
-    };
-  }
-
   if (hasAny(q, ["je me sens seul", "je me sens seule", "je suis seul", "je suis seule", "personne ne m aime", "j ai personne"])) {
     return {
       content: pick([
@@ -267,7 +253,7 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
 
   if (isShort(q) && exactAny(q, ["merci", "merci beaucoup", "thx"])) {
     return {
-      content: pick(["Avec plaisir.", "Je t’en prie.", "Pas de souci.", "On avance bien."], q + history.join("|")),
+      content: pick(["Avec plaisir.", "Je t’en prie.", "Pas de souci.", "Content d’avoir pu t’aider."], q + history.join("|")),
       intent: "v71-3-thanks-clean",
       confidence: "high",
       shouldIntercept: true
@@ -292,7 +278,7 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
 
 export function naturalIntelligenceGuidance() {
   return `
-V87 Natural Intelligence Layer :
+V71.3 Natural Intelligence Layer :
 - La sécurité est prioritaire sur tout, y compris le silence demandé par l'utilisateur.
 - Une salutation ne casse pas un silence persistant ; seule une demande claire de reprise le fait.
 - Messages courts = réponses courtes, sauf détresse explicite ou risque de danger.
@@ -302,10 +288,6 @@ V87 Natural Intelligence Layer :
 - Pose au maximum une question de relance, seulement si elle aide vraiment.
 - Ne fais pas semblant d'être humain : sois un assistant présent, clair, calme et fiable.
 - Réduis les phrases de remplissage. Donne un résultat utile ou une présence simple.
-- V87 : évite les relances automatiques après chaque micro-message ; réponds puis laisse respirer.
-- V87 : quand une formulation vient d'être utilisée dans les derniers messages, choisis une autre tournure.
-- V87 : pour les messages émotionnels/personnels non critiques, accueille l'émotion avant l'action et propose une seule petite étape.
-- V87 : remplace les phrases automatiques par une présence sobre, concrète et non répétitive.
 `;
 }
 
