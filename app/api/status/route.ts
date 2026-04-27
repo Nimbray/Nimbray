@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { routingSummary } from "../../../lib/model-router";
+import { uploadLimits } from "../../../lib/upload-router";
+import { visionStatus } from "../../../lib/vision-router";
 
 async function fetchOllamaModels() {
   const baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
@@ -17,6 +19,7 @@ async function fetchOllamaModels() {
 export async function GET() {
   const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
   const ollama = await fetchOllamaModels();
+  const vision = visionStatus();
   return NextResponse.json({
     ok: true,
     provider,
@@ -27,6 +30,8 @@ export async function GET() {
       "nimbray-demo-engine-v40",
     router: routingSummary(),
     ollama,
+    vision,
+    uploadLimits: uploadLimits(),
     features: {
       v40ReleaseCandidate: true,
       consolidatedLocalBrain: true,
@@ -50,6 +55,9 @@ export async function GET() {
       officialDocs: process.env.ENABLE_OFFICIAL_DOCS !== "false",
       rag: process.env.ENABLE_FREE_SOURCES !== "false",
       documentParsing: process.env.ENABLE_DOCUMENT_PARSING !== "false",
+      serverVisionUploads: vision.enabled,
+      serverVisionConfigured: vision.configured,
+      multipartChatUploads: true,
       pdfParsing: process.env.ENABLE_PDF_PARSE !== "false",
       docxParsing: process.env.ENABLE_DOCX_PARSE !== "false",
       adminPanel: process.env.ENABLE_ADMIN_PANEL !== "false",
