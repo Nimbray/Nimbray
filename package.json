@@ -17,7 +17,9 @@
     "agent:merge-check": "node scripts/agent-merge-check.js",
     "agent:pr-check": "node scripts/agent-workflow.js pr-check",
     "lint": "echo \"No lint configured for this snapshot.\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "deploy:secrets": "node scripts/deploy-no-secrets.js",
+    "deploy:check": "node scripts/deploy-preflight.js"
   },
   "dependencies": {
     "@vercel/speed-insights": "^2.0.0",
