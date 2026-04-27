@@ -28,6 +28,27 @@
         "npm run source:check",
         "npm run agent:merge-check"
       ]
+    },
+    {
+      "version": "85.0.0",
+      "agent": "produit",
+      "branch": "agent/product/v85-roadmap-v85-v90",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "Cadrage Produit V85 à V90 : priorités, critères d’acceptation, upload, cerveau IA, UX chat et déploiement.",
+      "files": [
+        "project-workspaces/02_agent-produit/ROADMAP.md",
+        "project-workspaces/02_agent-produit/NOTES.md",
+        "project-workspaces/02_agent-produit/HANDOFF_PRODUIT_V85_roadmap-v85-v90.md"
+      ],
+      "risks": [
+        "Dépend des corrections Frontend Backend IA pour valider le parcours upload réel",
+        "Ne remplace pas la validation runtime ni les tests manuels"
+      ],
+      "tests": [
+        "npm run source:check",
+        "npm run agent:merge-check"
+      ]
     }
   ]
 }
