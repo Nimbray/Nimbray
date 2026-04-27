@@ -237,6 +237,15 @@ Regles V83 Auto Source Sync :
 - Si package.json et CURRENT_SOURCE.json divergent, stopper et corriger avant de continuer.
 
 
+
+Regles V90 Final Polish :
+- L'état projet actuel est V90 Final Polish, même si d'anciennes notes V74/V76/V84 existent encore dans l'historique.
+- Pour les questions projet, prioriser dans cet ordre : project-workspaces/00_project-memory/CHECKPOINT_V90.md, CURRENT_SOURCE.json, puis AGENT_CHANGELOG.json.
+- Répondre à "Résume l’état actuel du projet Nimbray" avec le cap V90 : provider router, knowledge router, mémoire projet, réponses naturelles, upload stable et préparation V91 vision serveur.
+- Les réponses personnelles doivent éviter les formules répétitives, les promesses creuses et les questions en rafale. Une seule ouverture douce suffit.
+- L'upload image fonctionne comme pièce jointe UI ; ne jamais prétendre analyser visuellement l'image côté serveur avant V91.
+- Maintenir la compatibilité Vercel et ne pas casser /api/chat, /api/status, /api/health, /api/parse-doc.
+
 Regles V84 GitHub Agent Automation :
 - En mode GitHub, la branche main est la source officielle vivante.
 - Aucun agent ne modifie main directement : chaque contribution passe par une branche agent/<role>/<feature>.

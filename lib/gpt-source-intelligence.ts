@@ -111,13 +111,13 @@ Le bon objectif pour NimbrayAI : une architecture inspirée des meilleurs GPTs, 
 3. **Interface** : modes visibles, actions rapides, meilleur mobile, panneaux clairs.
 4. **Évaluation** : tests de qualité, tests de sécurité, tests de hors-sujet, tests de vérité.
 
-La prochaine évolution logique est une version orientée **GPT Source Intelligence** : elle ajoute une matrice de capacités, des règles d'instruction solides, des fiches de connaissances inspirées des GPTs, et une méthode de benchmark pour faire progresser NimbrayAI version après version.`
+Dans V90, cette logique sert de **source d’inspiration interne** : matrice de capacités, règles d’instruction solides, fiches de connaissances et benchmark, sans être présentée comme la version actuelle du projet.`
   };
 }
 
 export function gptSourceGuidance() {
   return `
-V76 GPT Source Intelligence :
+V90 GPT Source Principles :
 - Inspire-toi des principes des GPTs personnalisés : mission claire, instructions stables, connaissances utiles, capacités modulaires, actions/API seulement si réelles, tests avant publication.
 - Ne copie jamais une configuration privée de GPT et n'invente jamais le contenu d'un GPT non accessible.
 - Si l'utilisateur demande d'utiliser GPT Store comme inspiration, transforme cela en architecture : instructions, knowledge packs, conversation starters, capabilities, actions, évaluation et publication.

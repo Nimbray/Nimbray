@@ -1,8 +1,39 @@
 {
   "project": "NimbrayAI",
-  "current_version": "84.0.0",
+  "current_version": "90.0.0",
   "official_branch": "main",
   "entries": [
+    {
+      "version": "90.0.0",
+      "agent": "ia-integration",
+      "branch": "integration/v90-final-polish",
+      "status": "pr-ready",
+      "summary": "Polish V90 du cerveau projet : état projet actuel, priorité mémoire officielle, réponses personnelles plus naturelles et mention V91 pour l’analyse vision serveur.",
+      "files": [
+        "app/api/chat/route.ts",
+        "app/page.tsx",
+        "lib/project-intelligence.ts",
+        "lib/natural-intelligence.ts",
+        "lib/brain.ts",
+        "CURRENT_SOURCE.json",
+        "AGENT_CHANGELOG.json",
+        "package.json",
+        "project-workspaces/00_project-memory/CHECKPOINT_V90.md",
+        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
+      ],
+      "risks": [
+        "Vérifier en production que les anciennes réponses V74/V76 ne ressortent plus comme état courant.",
+        "Confirmer que l’upload image conserve le comportement UI attendu."
+      ],
+      "tests": [
+        "npm install --no-audit --no-fund",
+        "npm run typecheck",
+        "npm run build",
+        "API local: Résume l’état actuel du projet Nimbray",
+        "API local: je me sens un peu seul",
+        "Revue statique upload image"
+      ]
+    },
     {
       "version": "84.0.0",
       "agent": "integrateur",

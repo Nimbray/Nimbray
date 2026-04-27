@@ -238,14 +238,14 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
     };
   }
 
-  if (hasAny(q, ["je me sens seul", "je me sens seule", "je suis seul", "je suis seule", "personne ne m aime", "j ai personne"])) {
+  if (hasAny(q, ["je me sens un peu seul", "je me sens un peu seule", "je me sens seul", "je me sens seule", "je suis seul", "je suis seule", "personne ne m aime", "j ai personne"])) {
     return {
       content: pick([
-        "Je suis désolé que tu te sentes comme ça. La solitude peut vraiment peser, surtout quand on garde tout pour soi. Tu peux commencer petit : qu’est-ce qui te manque le plus là, une présence, de l’affection, ou quelqu’un à qui parler ?",
-        "Je t’entends. Se sentir seul, ça peut faire très mal. On peut en parler doucement, sans que tu aies besoin de tout expliquer parfaitement.",
-        "Ça doit être lourd à porter. Je ne vais pas te sortir une phrase toute faite : dis-moi juste ce qui te pèse le plus maintenant."
+        "Je t’entends. La solitude peut peser même quand on arrive encore à fonctionner. On peut rester sur quelque chose de simple : raconte juste un petit bout de ta journée, sans devoir tout expliquer.",
+        "Ça peut faire mal de se sentir à côté des autres. Pas besoin de grande phrase ni de justification : on peut avancer doucement, une pensée après l’autre.",
+        "Je comprends. Quand on se sent seul, le plus dur est parfois de faire le premier pas vers quelqu’un. Pour ce soir, vise petit : un message simple à une personne sûre, ou quelques minutes à poser ce que tu ressens ici."
       ], q + history.join("|")),
-      intent: "v71-3-loneliness",
+      intent: "v90-loneliness-natural",
       confidence: "high",
       shouldIntercept: true
     };

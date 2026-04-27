@@ -31,12 +31,6 @@ function createTitle(text: string) {
   return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean || "Nouvelle discussion";
 }
 
-function formatFileSize(bytes: number) {
-  if (!bytes) return "0 Ko";
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
-}
-
 function threadsForStorage(list: Thread[]) {
   return list.map((thread) => ({
     ...thread,
@@ -115,13 +109,10 @@ function AssistantMessage({ message, isLatest }: { message: Message; isLatest: b
   return (
     <div className="message-row assistant">
       <div className="assistant-block">
-        <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span>{message.provider ? <span className="provider-chip">{message.provider}</span> : null}</div>
-        <div className="message-card assistant-card">
-          <div className="message-content">{visible}</div>
-        </div>
+        <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
+        <div className="message-content">{visible}</div>
         <div className="message-actions">
           <button onClick={() => navigator.clipboard?.writeText(message.content)}>Copier</button>
-          {message.fallbackUsed ? <span>Fallback activé</span> : null}
         </div>
         {message.sourcesUsed?.length ? (
           <details className="sources-details">
@@ -372,7 +363,7 @@ export default function HomePage() {
 
     const visibleUserContent = text || (imagesForMessage.length === 1 ? "Image envoyée" : `${imagesForMessage.length} images envoyées`);
     const imagePromptContext = imagesForMessage.length
-      ? `\n\n[Images jointes par l’utilisateur : ${imagesForMessage.map((img) => `${img.name} (${img.type}, ${Math.round(img.size / 1024)} Ko)`).join(" ; ")}. Analyse visuelle non disponible côté serveur dans cette version : réponds honnêtement, demande une description si nécessaire, et utilise le message texte s’il existe.]`
+      ? `\n\n[Images jointes par l’utilisateur : ${imagesForMessage.map((img) => `${img.name} (${img.type}, ${Math.round(img.size / 1024)} Ko)`).join(" ; ")}. Analyse visuelle non disponible côté serveur dans V90 ; prévue pour V91 : réponds honnêtement, demande une description si nécessaire, et utilise le message texte s’il existe.]`
       : "";
     const userMessage: Message = { role: "user", content: visibleUserContent, images: imagesForMessage.length ? imagesForMessage : undefined };
     const optimisticMessages = [...baseMessages, userMessage];
@@ -565,7 +556,7 @@ export default function HomePage() {
             <div className="brand-mark">N</div>
             <div>
               <div className="brand-name">NimbrayAI</div>
-              <div className="brand-sub">Interface IA premium</div>
+              <div className="brand-sub">Nimbray multi-agent</div>
             </div>
           </div>
 
@@ -611,11 +602,10 @@ export default function HomePage() {
           <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Ouvrir le menu">☰</button>
           <div className="topbar-title">
             <h1>{active?.title || "Nouvelle discussion"}</h1>
-            <p><span className="live-dot" /> Chat, sources, mémoire et agents projet.</p>
+            <p>Produit, IA, Backend, Frontend — ensemble.</p>
           </div>
           <div className="topbar-actions">
             <button onClick={() => regenerate()} disabled={loading || !active?.messages.length}>Régénérer</button>
-            <button onClick={() => setDrawer("knowledge")}>Sources</button>
             <button onClick={() => setDrawer("workspace")}>Espace</button>
           </div>
         </header>
@@ -624,20 +614,14 @@ export default function HomePage() {
           {!active?.messages.length ? (
             <div className="welcome clean-welcome">
               <div className="welcome-logo">N</div>
-              <span className="welcome-eyebrow">NimbrayAI · Projet IA</span>
-              <h2>Une interface claire pour penser, créer et avancer.</h2>
-              <p className="welcome-minimal-text">Pose une question, joins une image ou ajoute un document : Nimbray garde le contexte projet au centre sans alourdir l’expérience.</p>
-              <div className="prompt-grid" aria-label="Suggestions de démarrage">
-                <button onClick={() => setInput("Aide-moi à améliorer le produit Nimbray avec une réponse claire et actionnable.")}>Améliorer le produit</button>
-                <button onClick={() => setInput("Analyse ce point technique et donne-moi les prochaines étapes propres.")}>Analyser un sujet technique</button>
-                <button onClick={() => setDrawer("knowledge")}>Ajouter des sources</button>
-              </div>
+              <h2>Bonjour, que veux-tu demander à NimbrayAI&nbsp;?</h2>
+              <p className="welcome-minimal-text">Une IA simple, humaine et utile.</p>
             </div>
           ) : (
             <div className="messages-list">
               {active.messages.map((message, index) => message.role === "user" ? (
                 <div key={index} className="message-row user">
-                  <div className="user-bubble message-card">
+                  <div className="user-bubble">
                     {message.images?.length ? (
                       <div className="message-images">
                         {message.images.filter((image) => image.dataUrl).map((image) => (
@@ -658,10 +642,7 @@ export default function HomePage() {
                 <div className="message-row assistant">
                   <div className="assistant-block">
                     <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-                    <div className="message-card assistant-card loading-card" aria-live="polite">
-                      <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
-                      <span className="thinking">Nimbray prépare une réponse propre…</span>
-                    </div>
+                    <div className="message-content thinking">NimbrayAI répond…</div>
                   </div>
                 </div>
               ) : null}
@@ -675,7 +656,7 @@ export default function HomePage() {
             <div className="composer">
               <label className="attach-btn" title="Ajouter des sources">
                 <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} />
-                <span aria-hidden="true">＋</span>
+                ＋
               </label>
               <textarea
                 ref={textareaRef}
@@ -683,7 +664,7 @@ export default function HomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
-                placeholder="Message, idée, question ou consigne projet…"
+                placeholder="Écris ton message à NimbrayAI…"
               />
               <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading}>Envoyer</button>
             </div>
@@ -692,13 +673,13 @@ export default function HomePage() {
                 {pendingImages.map((image) => (
                   <div key={image.id} className="pending-image">
                     <img src={image.dataUrl} alt={image.name} />
-                    <span><strong>{image.name}</strong><small>{formatFileSize(image.size)}</small></span>
+                    <span>{image.name}</span>
                     <button type="button" onClick={() => setPendingImages((prev) => prev.filter((item) => item.id !== image.id))}>×</button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images et documents acceptés</div>
+            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images acceptées</div>
           </div>
         </div>
       </section>
@@ -738,7 +719,7 @@ export default function HomePage() {
                   <strong>Ajouter des sources</strong>
                   <span>TXT, MD, CSV, JSON, code, PDF, DOCX</span>
                 </label>
-                <div className="source-grid-note">Les documents ajoutés restent disponibles comme sources locales pour enrichir les réponses sans modifier le contrat de chat.</div>
+                <div className="source-grid-note">Le cerveau V46 regroupe les connaissances en pôles : comportement, savoir stable, action, sécurité, documents et mémoire.</div>
                 {parseNotes.length ? (
                   <div className="parse-notes">
                     {parseNotes.map((note, i) => (
@@ -752,7 +733,7 @@ export default function HomePage() {
                 <div className="memory-list">
                   {knowledge.length ? knowledge.map((item) => (
                     <div key={item.id} className="memory-item">
-                      <span><strong>{item.name}</strong><br />{formatFileSize(item.size)}</span>
+                      <span><strong>{item.name}</strong><br />{Math.round(item.size / 1024)} Ko</span>
                       <button onClick={() => setKnowledge((p) => p.filter((k) => k.id !== item.id))}>Supprimer</button>
                     </div>
                   )) : <div className="empty">Aucune source locale.</div>}
@@ -767,7 +748,7 @@ export default function HomePage() {
                 <div className="admin-card"><strong>Action Brain</strong><span>Coaching, organisation, décisions, projets, productivité, apprentissage et passage à l’action.</span></div>
                 <div className="admin-card"><strong>Safety Brain</strong><span>Violence, suicide, illégal, détresse, autodommage, cybersécurité offensive : réponses cadrées et utiles.</span></div>
                 <div className="admin-card"><strong>Document & Memory Brain</strong><span>Documents utilisateur, RAG local, mémoire personnelle et préférences durables.</span></div>
-                <div className="admin-card"><strong>GPT Source Intelligence V76</strong><span>Inspiration des principes GPTs publics : instructions, connaissances, capacités, actions réelles, amorces, tests, publication et vérité.</span></div>
+                <div className="admin-card"><strong>Project Brain V90</strong><span>Mémoire projet prioritaire, routage IA, réponses naturelles, upload stable et préparation V91 pour l’analyse vision serveur.</span></div>
                 <div className="admin-card"><strong>Collaborative Workspaces V82</strong><span>Source officielle unique, espaces séparés par conversation/agent, journaux de changements, handoffs et intégration validée.</span></div>
                 <div className="admin-card"><strong>Capability Matrix</strong><span>Auto, Expert, Code, Projet, Créatif, Coach, Court, Apprendre, Recherche et Sécurité, avec contrôle des contraintes.</span></div>
               </div>

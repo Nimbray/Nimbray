@@ -100,7 +100,7 @@ function extractAfter(q: string, prep: string) {
 function detectDomain(q: string): MaxDomain {
   if (includesAny(q, ["recette", "cuisine", "repas", "plat", "ingredient", "ingrédient", "frites", "pates", "pâtes", "poulet", "jambon", "oeuf", "œuf", "gateau", "gâteau"])) return "cooking";
   if (includesAny(q, ["bug", "erreur", "stack trace", "typescript", "javascript", "python", "react", "next", "vercel", "npm", "build", "api", "fonction", "component", "composant"])) return "code";
-  if (includesAny(q, ["nimbray", "projet", "version", "roadmap", "deploiement", "déploiement", "release", "v70", "v71", "v72", "v73", "v74", "sprint"])) return "project";
+  if (includesAny(q, ["nimbray", "projet", "version", "roadmap", "deploiement", "déploiement", "release", "v90", "v91", "v70", "v71", "v72", "v73", "v74", "sprint"])) return "project";
   if (includesAny(q, ["business", "client", "vente", "marketing", "startup", "offre", "prix", "prospection", "positionnement", "concurrent"])) return "business";
   if (includesAny(q, ["ecris", "écris", "redige", "rédige", "reformule", "corrige ce texte", "mail", "email", "lettre", "post", "message"])) return "writing";
   if (includesAny(q, ["explique", "apprendre", "cours", "definition", "définition", "pourquoi", "comment ca marche", "comment ça marche", "resume", "résume"])) return "learning";
@@ -153,7 +153,7 @@ function extractRequiredTerms(text: string) {
   const known = [
     "frites", "jambon", "poulet", "pates", "pâtes", "riz", "fromage", "oeufs", "œufs", "vegetarien", "végétarien",
     "vercel", "next", "nextjs", "react", "typescript", "javascript", "python", "npm", "build", "api",
-    "nimbrayai", "v71", "v72", "v73", "v74", "memoire", "mémoire", "projet", "securite", "sécurité",
+    "nimbrayai", "v90", "v91", "v71", "v72", "v73", "v74", "memoire", "mémoire", "projet", "securite", "sécurité",
     "silence", "quality", "qualite", "qualité", "cerveau", "connaissances", "zip"
   ];
   for (const term of known) if (hasWord(q, term)) terms.push(term);
@@ -190,7 +190,7 @@ function cookingReply(profile: MaxProfile, text: string): MaxReply | null {
 
   if (hasWord(q, "frites")) {
     return {
-      intent: "v74-max-cooking-fries-constraint-locked",
+      intent: "v90-quality-cooking-fries-constraint-locked",
       confidence: "high",
       content: `Oui — je te donne une recette où les **frites** restent au centre.
 
@@ -217,7 +217,7 @@ Résultat : un plat simple, gourmand, et surtout basé sur les frites — pas un
 
   const main = ingredientTerms.length ? ingredientTerms.join(", ") : "ce que tu as sous la main";
   return {
-    intent: "v74-max-cooking-generic-constraint-locked",
+    intent: "v90-quality-cooking-generic-constraint-locked",
     confidence: "medium",
     content: `Oui — je garde ta contrainte principale : **${main}**.
 
@@ -245,7 +245,7 @@ function codeBuildReply(profile: MaxProfile, text: string): MaxReply | null {
   if (!includesAny(q, ["erreur", "bug", "build", "npm run build", "vercel", "deploy", "deploiement", "déploiement"])) return null;
 
   return {
-    intent: "v74-max-code-debug-deploy",
+    intent: "v90-quality-code-debug-deploy",
     confidence: "medium",
     content: `On va le traiter proprement, comme un bug de déploiement.
 
@@ -287,15 +287,15 @@ function projectAiReply(profile: MaxProfile, text: string): MaxReply | null {
   if (!includesAny(q, ["ameliorer", "améliorer", "evoluer", "évoluer", "max", "maximum", "plus forte", "puissante", "prochaine grosse", "version", "ia"])) return null;
 
   return {
-    intent: "v74-max-project-ai-strategy",
+    intent: "v90-quality-project-ai-strategy",
     confidence: "high",
     content: `La direction la plus forte, c’est de faire évoluer NimbrayAI comme une vraie architecture IA, pas comme un simple chatbot.
 
 ## Priorité immédiate
 
-**V74 — Max Intelligence Core**
+**V90 — Final Polish / Quality Core**
 
-Objectif : pousser le cœur actuel au maximum :
+Objectif : stabiliser le cœur actuel avant PR :
 - compréhension plus stricte des demandes ;
 - verrouillage des contraintes ;
 - quality gate final ;
@@ -325,7 +325,7 @@ Le vrai bond vient du trio : **raisonnement + contraintes + qualité finale**.`
 function decisionReply(profile: MaxProfile): MaxReply | null {
   if (profile.taskType !== "decide") return null;
   return {
-    intent: "v74-max-decision-framework",
+    intent: "v90-decision-framework",
     confidence: "medium",
     content: `Pour choisir intelligemment, compare sur 5 critères :
 
@@ -355,7 +355,7 @@ export function maxIntelligenceGuidance(profile: MaxProfile) {
   const required = profile.requiredTerms.length ? profile.requiredTerms.join(", ") : "aucune contrainte explicite forte";
   const mustKeep = profile.mustKeep.length ? profile.mustKeep.join(", ") : "le sujet principal de la demande";
   return `
-V74 Max Intelligence Core :
+V90 Quality Core :
 - Domaine : ${profile.domain}. Type de tâche : ${profile.taskType}. Style : ${profile.answerStyle}. Niveau qualité : ${profile.qualityLevel}. Risque : ${profile.risk}.
 - Contraintes détectées : ${required}. Éléments à conserver : ${mustKeep}.
 - Comprends d'abord l'intention réelle de l'utilisateur, puis réponds à cette intention sans dériver.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { buildSystemPrompt } from "../../../lib/brain";
 import { demoReply } from "../../../lib/demo-engine";
+import { buildContext } from "../../../lib/free-sources";
 import { detectIntent, desiredModelForIntent } from "../../../lib/model-router";
 import { detectConversationIntent, inferResponseMode, conversationGuidance, type ResponseMode } from "../../../lib/conversation-engine";
 import { assessSafetyWithContext, safetyGuidanceForPrompt } from "../../../lib/safety-router";
@@ -15,8 +16,6 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
-import { routeProvider } from "../../../lib/provider-router";
-import { routeKnowledge, knowledgeRouterGuidance } from "../../../lib/knowledge-router";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
@@ -250,9 +249,9 @@ export async function POST(req: Request) {
     const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
     if (hasImageAttachment) {
       return NextResponse.json({
-        content: "J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. Décris-moi ce que tu veux vérifier sur l’image, ou active plus tard un modèle vision pour que NimbrayAI puisse l’observer directement.",
+        content: "J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. L’analyse vision serveur est prévue pour V91. Décris-moi ce que tu veux vérifier sur l’image et je t’aide à partir de ta description.",
         provider: "nimbray-local",
-        model: "v77-image-upload-stability",
+        model: "v90-upload-image-stability",
         intent: "image-upload",
         responseMode,
         fallbackUsed: false,
@@ -306,14 +305,14 @@ export async function POST(req: Request) {
         sourcesUsed: []
       });
     }
-    // V76 GPT Source Intelligence : inspire NimbrayAI des principes GPTs publics
+    // V90 Project Brain : conserve l’inspiration GPT Source sans l’annoncer comme état projet actuel
     // sans copier de GPT privé, sans inventer d accès et sans faux liens/actions.
     const gptSource = gptSourceIntelligenceReply(latestUser, messages);
     if (gptSource) {
       return NextResponse.json({
         content: gptSource.content,
         provider: "nimbray-local",
-        model: "v76-gpt-source-intelligence",
+        model: "v90-gpt-source-principles",
         intent: gptSource.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -322,13 +321,13 @@ export async function POST(req: Request) {
     }
 
 
-    // V72 Memory & Project Intelligence : état projet, décisions, roadmap et prochaine action avant les anciens moteurs.
+    // V90 Project Memory : état projet, décisions, roadmap et prochaine action avant les anciens moteurs.
     const projectReply = projectIntelligenceReply(latestUser, projectSnapshot);
     if (projectReply) {
       return NextResponse.json({
         content: projectReply.content,
         provider: "nimbray-local",
-        model: "v72-memory-project-intelligence",
+        model: "v90-project-memory",
         intent: projectReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -336,13 +335,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // V74 Max Intelligence Core : raisonnement, contraintes et réponses pratiques avant les anciens moteurs.
+    // V90 Quality Core : raisonnement, contraintes et réponses pratiques avant les anciens moteurs.
     const maxReply = maxIntelligenceReply(latestUser, messages);
     if (maxReply) {
       return NextResponse.json({
         content: maxReply.content,
         provider: "nimbray-local",
-        model: "v74-max-intelligence-core",
+        model: "v90-quality-core",
         intent: maxReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -427,16 +426,12 @@ export async function POST(req: Request) {
     const compassMode = detectCompassMode(latestUser);
     const platformIntent = detectIntelligenceIntent(latestUser);
     const sourceRequested = wantsSources(latestUser);
-    const knowledge = await routeKnowledge({
-      query: latestUser,
-      userKnowledge,
-      conversationIntent,
-      platformIntent,
-      sourceRequested
-    });
-    const { context, sources } = knowledge;
+    // V32: ne charge pas des sources pour tout et rien. Les connaissances stables
+    // sont gérées localement ; le contexte externe est réservé aux demandes longues,
+    // documentaires, de recherche ou explicitement sourcées.
+    const contextUseful = sourceRequested || ["document", "research"].includes(conversationIntent) || ["document", "research", "super_brain", "project"].includes(platformIntent) || latestUser.length > 260;
+    const { context, sources } = contextUseful ? await buildContext(latestUser, userKnowledge) : { context: "", sources: [] as any[] };
     const guidance = `${conversationGuidance(conversationIntent, responseMode)}
-${knowledgeRouterGuidance(knowledge)}
 ${naturalIntelligenceGuidance()}
 ${projectGuidance(projectSnapshot)}
 ${maxIntelligenceGuidance(maxProfile)}
@@ -445,19 +440,15 @@ ${gptSourceGuidance()}
 ${expertTeamGuidance()}
 ${safetyGuidanceForPrompt()}
 Sécurité détectée : ${safety.category}. ${safety.guidance}
-V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
+V90 Project Brain, Provider Router, Knowledge Router, mémoire projet, réponses naturelles et upload stable : réponse directe, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
     const systemPrompt = buildSystemPrompt(memory.slice(0, 5), context, guidance);
-    const result = await routeProvider({
-      messages,
-      systemPrompt,
-      latestUser,
-      memory,
-      userKnowledgeAvailable: userKnowledge.length > 0,
-      responseMode,
-      conversationIntent,
-      preferredProvider: body?.provider || process.env.AI_PROVIDER
-    });
-    const provider = result.provider;
+    const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
+
+    let result: ProviderResult;
+    if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
+    else if (provider === "groq") result = await groqReply(messages, systemPrompt);
+    else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
+    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v90", intent: conversationIntent };
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources
@@ -474,9 +465,6 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
       intent: result.intent || platformIntent || conversationIntent || null,
       responseMode,
       fallbackUsed: !!result.fallbackUsed,
-      fallbackChain: result.fallbackChain,
-      unavailableProviders: result.unavailableProviders,
-      knowledgeRoute: knowledge.route,
       sourcesUsed: cleanSources
     });
   } catch (error: any) {
