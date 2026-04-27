@@ -16,24 +16,9 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
+import { buildV87StyleGuidance, polishNimbrayResponse } from "../../../lib/response-polish";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
-type ChatAttachment = {
-  name: string;
-  type: string;
-  size: number;
-  kind: "image" | "document" | "file";
-  text?: string;
-};
-
-type ChatPayload = {
-  messages?: unknown;
-  memory?: unknown;
-  userKnowledge?: unknown;
-  responseMode?: unknown;
-  projectContext?: unknown;
-  attachments?: unknown;
-};
 
 type ProviderResult = { content: string; model: string; intent?: string; fallbackUsed?: boolean; sources?: string[] };
 
@@ -207,166 +192,12 @@ ${tail}`;
 
 function groqFriendlyError(raw: string) {
   if (/rate_limit|Rate limit|Request too large|tokens per minute|TPM/i.test(raw)) {
-    return "Je suis un peu ralenti là. Réessaie dans quelques secondes, ou envoie une question plus courte. Je reste disponible.";
+    return "Je suis un peu ralenti là. Réessaie dans quelques secondes, ou envoie une question plus courte.";
   }
   if (/GROQ_API_KEY/i.test(raw)) return "Groq n’est pas encore configuré. Le site peut continuer en mode démo, mais la vraie IA publique demande une clé Groq dans Vercel.";
   return "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
 }
 
-
-
-function errorResponse(message: string, status = 400, code = "BAD_REQUEST", requestId = createRequestId(), details?: Record<string, unknown>) {
-  const apiError = apiErrorPayload(message, code, requestId, details);
-  return NextResponse.json({ ok: false, error: message, code, details, requestId, apiError }, { status });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-function safeString(value: unknown, max = 24000) {
-  return String(value || "").replace(/\u0000/g, "").slice(0, max);
-}
-
-function envNumber(name: string, fallback: number) {
-  const value = Number(process.env[name]);
-  return Number.isFinite(value) && value > 0 ? value : fallback;
-}
-
-function attachmentLimitConfig() {
-  return {
-    maxAttachments: envNumber("MAX_CHAT_ATTACHMENTS", 6),
-    maxImageMb: envNumber("MAX_CHAT_IMAGE_MB", 8),
-    maxFileMb: envNumber("MAX_UPLOAD_FILE_MB", 12),
-    maxTotalMb: envNumber("MAX_UPLOAD_TOTAL_MB", 18)
-  };
-}
-
-function attachmentPublicMeta(attachments: ChatAttachment[]) {
-  return attachments.map(({ name, type, size, kind }) => ({ name, type, size, kind }));
-}
-
-function enforceAttachmentLimits(attachments: ChatAttachment[]) {
-  const limits = attachmentLimitConfig();
-  if (attachments.length > limits.maxAttachments) {
-    throw new ChatRequestError(
-      `Trop de fichiers envoyés. Limite actuelle : ${limits.maxAttachments}.`,
-      413,
-      "TOO_MANY_ATTACHMENTS",
-      { maxAttachments: limits.maxAttachments, received: attachments.length }
-    );
-  }
-
-  const totalBytes = attachments.reduce((sum, item) => sum + Math.max(0, item.size || 0), 0);
-  if (totalBytes > limits.maxTotalMb * 1024 * 1024) {
-    throw new ChatRequestError(
-      `Envoi trop lourd. Limite totale actuelle : ${limits.maxTotalMb} Mo.`,
-      413,
-      "UPLOAD_TOTAL_TOO_LARGE",
-      { maxTotalMb: limits.maxTotalMb, totalBytes }
-    );
-  }
-
-  attachments.forEach((attachment, index) => {
-    if ((attachment.size || 0) <= 0) {
-      throw new ChatRequestError("Fichier vide détecté. Envoie un fichier non vide.", 400, "EMPTY_FILE", { fileIndex: index });
-    }
-
-    if (!isSupportedAttachmentType(attachment.type)) {
-      throw new ChatRequestError(
-        "Type de fichier non supporté. Envoie une image, un PDF, un fichier texte, CSV, JSON, Markdown ou Word.",
-        415,
-        "UNSUPPORTED_FILE_TYPE",
-        { fileIndex: index, type: attachment.type || "application/octet-stream" }
-      );
-    }
-
-    const maxMb = attachment.kind === "image" || attachment.type.startsWith("image/") ? limits.maxImageMb : limits.maxFileMb;
-    if ((attachment.size || 0) > maxMb * 1024 * 1024) {
-      throw new ChatRequestError(`Fichier trop lourd. Limite actuelle : ${maxMb} Mo.`, 413, "UPLOAD_TOO_LARGE", { fileIndex: index, maxMb, size: attachment.size });
-    }
-  });
-}
-
-function normalizeMessages(input: unknown): ChatMessage[] {
-  if (!Array.isArray(input)) return [];
-  return input
-    .map((item) => {
-      if (!isRecord(item)) return null;
-      const role = item.role === "assistant" || item.role === "system" ? item.role : item.role === "user" ? "user" : null;
-      const content = safeString(item.content, 32000).trim();
-      return role && content ? ({ role, content } as ChatMessage) : null;
-    })
-    .filter(Boolean) as ChatMessage[];
-}
-
-function normalizeAttachments(input: unknown): ChatAttachment[] {
-  if (!Array.isArray(input)) return [];
-  return input.map((item) => {
-    if (!isRecord(item)) return null;
-    const name = safeString(item.name || "fichier", 180) || "fichier";
-    const type = safeString(item.type || "application/octet-stream", 120) || "application/octet-stream";
-    const size = Number(item.size || 0);
-    const inferredKind = type.startsWith("image/") ? "image" : item.text ? "document" : "file";
-    const kind = item.kind === "image" || item.kind === "document" || item.kind === "file" ? item.kind : inferredKind;
-    const text = typeof item.text === "string" ? safeString(item.text, Number(process.env.MAX_ATTACHMENT_TEXT_CHARS || 20000)).trim() : undefined;
-    return { name, type, size: Number.isFinite(size) ? size : 0, kind, text };
-  }).filter(Boolean) as ChatAttachment[];
-}
-
-async function readChatBody(req: Request): Promise<ChatPayload> {
-  const contentType = req.headers.get("content-type") || "";
-
-  if (contentType.includes("multipart/form-data")) {
-    const form = await req.formData();
-    const payloadRaw = form.get("payload");
-    const messagesRaw = form.get("messages");
-    let payload: Record<string, unknown> = {};
-
-    if (typeof payloadRaw === "string" && payloadRaw.trim()) {
-      try {
-        const parsed = JSON.parse(payloadRaw);
-        if (!isRecord(parsed)) throw new Error("payload must be an object");
-        payload = parsed;
-      } catch {
-        throw new ChatRequestError("Payload multipart invalide : le champ payload doit contenir un JSON objet lisible.", 400, "MULTIPART_PAYLOAD_INVALID");
-      }
-    } else if (typeof messagesRaw === "string" && messagesRaw.trim()) {
-      try {
-        payload.messages = JSON.parse(messagesRaw);
-      } catch {
-        throw new ChatRequestError("Payload multipart invalide : le champ messages doit contenir un JSON lisible.", 400, "MULTIPART_PAYLOAD_INVALID");
-      }
-    }
-
-    const formAttachments: ChatAttachment[] = [];
-    for (const value of form.getAll("files")) {
-      if (!(value instanceof File)) continue;
-      const type = value.type || "application/octet-stream";
-      formAttachments.push({ name: value.name || "fichier", type, size: value.size, kind: type.startsWith("image/") ? "image" : "file" });
-    }
-
-    const attachments = [...normalizeAttachments(payload.attachments), ...formAttachments];
-    enforceAttachmentLimits(attachments);
-    return { ...payload, attachments };
-  }
-
-  if (!contentType || contentType.includes("application/json")) return await req.json();
-  throw new ChatRequestError("Format de requête non supporté. Envoie du JSON ou un formulaire multipart.", 415, "UNSUPPORTED_CONTENT_TYPE");
-}
-
-function attachmentGuidance(attachments: ChatAttachment[]) {
-  if (!attachments.length) return "";
-  const images = attachments.filter((item) => item.kind === "image");
-  const docs = attachments.filter((item) => item.kind !== "image");
-  const summary = attachments.map((item) => `${item.name} (${item.type || "type inconnu"}, ${Math.max(1, Math.round((item.size || 0) / 1024))} Ko)`).join(" ; ");
-  const docText = docs.filter((item) => item.text).map((item) => `\n\n[Extrait de ${item.name}]\n${item.text}`).join("");
-  return `\n\n[Pièces jointes reçues : ${summary}. ${images.length ? "Images présentes : confirme la réception, reste honnête si aucun modèle vision n’est configuré, et demande une description utile si nécessaire." : ""} ${docs.length ? "Documents présents : utilise les extraits texte disponibles sans inventer le contenu manquant." : ""}]${docText}`;
-}
-
-function hasAttachmentSignal(text: string, attachments: ChatAttachment[]) {
-  return attachments.length > 0 || /\[(Images?|Fichiers?|Pièces jointes?) jointes? par l[’']utilisateur/i.test(text);
-}
 
 async function callJson(url: string, init: RequestInit) {
   const response = await fetch(url, init);
@@ -466,6 +297,16 @@ export async function POST(req: Request) {
   const startedAt = Date.now();
   const contentType = req.headers.get("content-type") || "unknown";
   try {
+    const body = await req.json();
+    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean);
+    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni." }, { status: 400 });
+
+    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
+    const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
+    const latestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const responseMode = inferResponseMode(latestUser, (body?.responseMode || "auto") as ResponseMode);
+    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
+    if (hasImageAttachment) {
     const body = await readChatBody(req);
     if (!isRecord(body)) return errorResponse("Requête chat invalide.", 400, "INVALID_BODY", requestId);
 
@@ -513,7 +354,7 @@ export async function POST(req: Request) {
       latestUser,
       messages,
       memory,
-      projectContext: body.projectContext || { projectName: "NimbrayAI", focus: "évolution IA conversationnelle, sécurité, mémoire projet et qualité" }
+      projectContext: body?.projectContext || { projectName: "NimbrayAI", focus: "évolution IA conversationnelle, sécurité, mémoire projet et qualité" }
     });
     const safety = assessSafetyWithContext(latestUser, messages);
     if (safety.shouldIntercept && safety.response) {
@@ -548,7 +389,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         content: expertTeam.content,
         provider: "nimbray-local",
-        model: "v82-collaborative-workspaces",
+        model: "v87-natural-product-brain",
         intent: expertTeam.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -577,7 +418,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         content: projectReply.content,
         provider: "nimbray-local",
-        model: "v72-memory-project-intelligence",
+        model: "v87-project-intelligence",
         intent: projectReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -698,7 +539,7 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
     if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
     else if (provider === "groq") result = await groqReply(messages, systemPrompt);
     else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
-    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v74", intent: conversationIntent };
+    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v87", intent: conversationIntent };
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources

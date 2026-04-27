@@ -99,6 +99,35 @@
         "node scripts/agent-merge-check.js",
         "npm run build not executed: next not installed in zip environment"
       ]
+    },
+    {
+      "version": "87.0.0-proposed",
+      "agent": "ia",
+      "branch": "agent/ai/v87-natural-product-brain",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "V87 Agent IA: personnalité Nimbray plus naturelle, réponses personnelles renforcées, anti-répétition et orchestration projet Backend/Frontend/IA/Produit.",
+      "files": [
+        "app/api/chat/route.ts",
+        "lib/response-polish.ts",
+        "lib/natural-intelligence.ts",
+        "lib/project-intelligence.ts",
+        "lib/expert-team.ts",
+        "lib/brain.ts",
+        "lib/demo-engine.ts",
+        "project-workspaces/03_agent-ia/HANDOFF_IA_V87_natural-product-brain.md"
+      ],
+      "risks": [
+        "Coordonner les conflits potentiels avec les branches Backend et Frontend sur app/api/chat/route.ts.",
+        "Lancer npm run build dans un environnement avec dépendances installées avant merge."
+      ],
+      "tests": [
+        "npm run source:status",
+        "npm run agent:start -- --agent ia --feature v87-natural-product-brain",
+        "npm run source:check",
+        "npm run agent:merge-check",
+        "TypeScript transpile check ciblé"
+      ]
     }
   ]
 }
