@@ -1,28 +1,34 @@
-{
-  "project": "NimbrayAI",
-  "activeVersion": "84.0.0",
-  "activeCodename": "V84 GitHub Agent Automation",
-  "activeArchive": "NimbrayAI_V84_GitHub_Agent_Automation.zip",
-  "sourceType": "github-ready-zip",
-  "officialBranch": "main",
-  "sourcePolicy": "GitHub main is the official living source. Every agent branches from main, documents work, opens a pull request, and only the integrator promotes an official version.",
-  "updatedAt": "2026-04-26",
-  "requiredAgentStartCommand": "npm run agent:start -- --agent <frontend|backend|ia|produit>",
-  "promotionCommand": "npm run source:promote -- --version <version> --zip <archive.zip> --notes \"<summary>\"",
-  "agentWorkspaceCommand": "npm run source:agent -- --agent <frontend|backend|ia|produit|integrateur>",
-  "githubCommands": {
-    "setup": "npm run github:setup",
-    "startAgent": "npm run agent:start -- --agent frontend --feature chat-ui",
-    "handoff": "npm run agent:handoff -- --agent frontend --version 84 --title \"chat ui\"",
-    "changelog": "npm run agent:changelog -- --agent frontend --branch agent/frontend/v84-chat-ui --summary \"Improve chat UI\"",
-    "mergeCheck": "npm run agent:merge-check"
+﻿{
+  "project": "Nimbray",
+  "current_version": "85.0.0",
+  "current_codename": "Upload UX Natural Intelligence",
+  "source_type": "github",
+  "official_branch": "main",
+  "repository": "Nimbray/Nimbray",
+  "last_official_commit": "pending-integration-v85",
+  "rule": "main is the only official source. All agents must branch from main and merge through pull requests.",
+  "agents": {
+    "product": {
+      "workspace": "project-workspaces/02_agent-produit",
+      "status": "merged"
+    },
+    "ai": {
+      "workspace": "project-workspaces/03_agent-ia",
+      "status": "merged"
+    },
+    "backend": {
+      "workspace": "project-workspaces/04_agent-backend",
+      "status": "merged"
+    },
+    "frontend": {
+      "workspace": "project-workspaces/05_agent-frontend",
+      "status": "merged"
+    }
   },
-  "guardrails": [
-    "Never push directly to main.",
-    "Start every agent branch from the latest main.",
-    "Each agent must create or update a handoff in its workspace.",
-    "Each pull request must pass GitHub Actions before merge.",
-    "Only the integrator updates CURRENT_SOURCE.json for official promotion.",
-    "Every agent must read AGENT_CHANGELOG.json before changing shared files."
-  ]
+  "validation": {
+    "source_check": "required",
+    "agent_merge_check": "required",
+    "build": "required",
+    "github_actions": "required"
+  }
 }
