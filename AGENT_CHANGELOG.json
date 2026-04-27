@@ -1,55 +1,8 @@
 {
   "project": "NimbrayAI",
-  "current_version": "89.1.0",
+  "current_version": "84.0.0",
   "official_branch": "main",
   "entries": [
-    {
-      "version": "89.1.0",
-      "date": "2026-04-27",
-      "agent": "integrateur",
-      "branch": "agent/v89-1-vercel-hardening",
-      "summary": "Vercel hardening: deterministic install, health endpoint, API errors, provider timeout and knowledge cache.",
-      "files": [
-        "package.json",
-        "vercel.json",
-        ".nvmrc",
-        ".npmrc",
-        ".vercelignore",
-        "lib/api-utils.ts",
-        "lib/free-sources.ts",
-        "app/api/chat/route.ts",
-        "app/api/parse-doc/route.ts",
-        "app/api/status/route.ts",
-        "app/api/health/route.ts",
-        "project-workspaces/00_project-memory/CHECKPOINT_V89_1.md"
-      ]
-    },
-    {
-      "version": "89.0.0",
-      "agent": "ia/backend/frontend",
-      "branch": "agent/ia/v89-knowledge-router-stability",
-      "status": "prepared",
-      "summary": "Stabilise /api/chat pour Vercel, corrige les artefacts d’encodage UI et ajoute le Knowledge Router V89.",
-      "files": [
-        "lib/knowledge-router.ts",
-        "app/api/chat/route.ts",
-        "app/api/status/route.ts",
-        "app/api/parse-doc/route.ts",
-        "app/page.tsx",
-        "project-workspaces/00_project-memory/CHECKPOINT_V89.md",
-        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md",
-        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md",
-        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md"
-      ],
-      "risks": [
-        "Build non exécuté dans cet environnement car npm ci a expiré.",
-        "Base ZIP V84/V82 au lieu d’un clone GitHub main à jour."
-      ],
-      "tests": [
-        "Inspection statique des fichiers critiques",
-        "Préparation des scénarios de validation V89"
-      ]
-    },
     {
       "version": "84.0.0",
       "agent": "integrateur",

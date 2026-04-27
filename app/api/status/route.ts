@@ -1,40 +1,25 @@
 import { NextResponse } from "next/server";
 import { routingSummary } from "../../../lib/model-router";
-import { knowledgeRouterSummary } from "../../../lib/knowledge-router";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-async function fetchOllamaModels() {
-  const baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), Number(process.env.STATUS_OLLAMA_TIMEOUT_MS || 1200));
-    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store", signal: controller.signal }).finally(() => clearTimeout(timer));
-    if (!res.ok) return { available: false, models: [] as string[], error: `Ollama ${res.status}` };
-    const data = await res.json();
-    const models = (data?.models || []).map((m: any) => m.name).filter(Boolean);
-    return { available: true, models, error: "" };
-  } catch (error: any) {
-    return { available: false, models: [] as string[], error: error?.message || "Ollama indisponible" };
-  }
-}
+import { providerStatus } from "../../../lib/provider-router";
 
 export async function GET() {
-  const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
-  const ollama = await fetchOllamaModels();
+  const providerRouter = await providerStatus();
+  const activeProvider = providerRouter.activeProvider;
   return NextResponse.json({
     ok: true,
-    provider,
+    provider: activeProvider,
     model:
-      provider === "ollama" ? process.env.OLLAMA_MODEL || process.env.OLLAMA_MODEL_GENERAL || "qwen2.5:3b" :
-      provider === "groq" ? process.env.GROQ_MODEL || "llama-3.1-8b-instant" :
-      provider === "openrouter" ? process.env.OPENROUTER_MODEL || "openrouter/auto" :
-      "nimbray-demo-engine-v89-1",
+      activeProvider === "ollama" ? providerRouter.providers.ollama.model :
+      activeProvider === "groq" ? providerRouter.providers.groq.model :
+      activeProvider === "openrouter" ? providerRouter.providers.openrouter.model :
+      "nimbray-demo-engine-v90",
     router: routingSummary(),
-    knowledgeRouter: knowledgeRouterSummary(),
-    ollama,
+    providerRouter,
+    ollama: providerRouter.providers.ollama,
     features: {
+      v90ProviderRouter: true,
+      v90KnowledgeRouter: true,
+      intelligentFallbacks: true,
       v40ReleaseCandidate: true,
       consolidatedLocalBrain: true,
       v23DialoguePersonality: true,
@@ -61,9 +46,7 @@ export async function GET() {
       docxParsing: process.env.ENABLE_DOCX_PARSE !== "false",
       adminPanel: process.env.ENABLE_ADMIN_PANEL !== "false",
       betaFeedback: process.env.ENABLE_BETA_FEEDBACK !== "false",
-      inviteMode: process.env.ENABLE_INVITE_MODE === "true",
-      knowledgeRouterV89: true,
-      vercelHardeningV891: true
+      inviteMode: process.env.ENABLE_INVITE_MODE === "true"
     }
   });
 }

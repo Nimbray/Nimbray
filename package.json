@@ -1,13 +1,11 @@
 {
-  "name": "nimbrayai",
-  "version": "89.1.0",
+  "name": "nimbrayai-v90-intelligent-project-brain",
+  "version": "90.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit",
-    "vercel:check": "npm run typecheck && npm run build",
     "source:status": "node scripts/source-manager.js status",
     "source:promote": "node scripts/source-manager.js promote",
     "source:agent": "node scripts/source-manager.js agent",
@@ -17,22 +15,19 @@
     "agent:handoff": "node scripts/agent-handoff.js",
     "agent:changelog": "node scripts/agent-changelog.js",
     "agent:merge-check": "node scripts/agent-merge-check.js",
-    "agent:pr-check": "node scripts/agent-workflow.js pr-check"
+    "agent:pr-check": "node scripts/agent-workflow.js pr-check",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "^14.2.33",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
     "mammoth": "^1.8.0",
-    "pdf-parse": "^1.1.1"
+    "next": "^14.2.33",
+    "pdf-parse": "^1.1.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.16.5",
     "@types/react": "^18.3.5",
-    "typescript": "^5.6.2"
-  },
-  "engines": {
-    "node": "20.x"
-  },
-  "packageManager": "npm@10.8.2"
+    "typescript": "^5.9.3"
+  }
 }

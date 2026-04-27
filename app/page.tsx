@@ -22,33 +22,6 @@ const FEEDBACK_KEY = "nimbrayai.v70.feedback.local";
 const SILENCE_KEY = "nimbrayai.v70.silence";
 
 
-function repairEncodingArtifacts(text: string) {
-  return String(text || "")
-    .replace(/Ã©/g, "é")
-    .replace(/Ã¨/g, "è")
-    .replace(/Ãª/g, "ê")
-    .replace(/Ã«/g, "ë")
-    .replace(/Ã /g, "à")
-    .replace(/Ã¢/g, "â")
-    .replace(/Ã§/g, "ç")
-    .replace(/Ã¹/g, "ù")
-    .replace(/Ã»/g, "û")
-    .replace(/Ã´/g, "ô")
-    .replace(/Ã®/g, "î")
-    .replace(/Ã¯/g, "ï")
-    .replace(/Ã‰/g, "É")
-    .replace(/Å“/g, "œ")
-    .replace(/â€™/g, "’")
-    .replace(/â€œ/g, "“")
-    .replace(/â€/g, "”")
-    .replace(/â€¦/g, "…")
-    .replace(/â€”/g, "—")
-    .replace(/â€“/g, "–")
-    .replace(/Â /g, " ")
-    .replace(/Â/g, "");
-}
-
-
 function createThread(): Thread {
   return { id: crypto.randomUUID(), title: "Nouvelle discussion", messages: [], createdAt: Date.now() };
 }
@@ -132,15 +105,14 @@ function useTypewriter(active: boolean, text: string) {
 }
 
 function AssistantMessage({ message, isLatest }: { message: Message; isLatest: boolean }) {
-  const cleanContent = repairEncodingArtifacts(message.content);
-  const visible = useTypewriter(isLatest, cleanContent);
+  const visible = useTypewriter(isLatest, message.content);
   return (
     <div className="message-row assistant">
       <div className="assistant-block">
         <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
         <div className="message-content">{visible}</div>
         <div className="message-actions">
-          <button onClick={() => navigator.clipboard?.writeText(cleanContent)}>Copier</button>
+          <button onClick={() => navigator.clipboard?.writeText(message.content)}>Copier</button>
         </div>
         {message.sourcesUsed?.length ? (
           <details className="sources-details">
@@ -660,7 +632,7 @@ export default function HomePage() {
                         ))}
                       </div>
                     ) : null}
-                    {repairEncodingArtifacts(message.content)}
+                    {message.content}
                   </div>
                 </div>
               ) : (

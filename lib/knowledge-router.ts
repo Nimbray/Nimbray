@@ -1,84 +1,78 @@
-export type KnowledgeRoute = {
-  kind: "local" | "user_knowledge" | "project" | "research" | "web_like" | "direct";
-  shouldBuildContext: boolean;
-  wantsSources: boolean;
-  confidence: "low" | "medium" | "high";
-  reasons: string[];
-  guidance: string;
+import { buildContext, loadInternalKnowledge, rankUserKnowledge, type SourceSnippet } from "./free-sources";
+
+type KnowledgeInput = {
+  query: string;
+  userKnowledge: string[];
+  conversationIntent: string;
+  platformIntent: string;
+  sourceRequested: boolean;
+};
+
+export type KnowledgeRouteResult = {
+  context: string;
+  sources: SourceSnippet[];
+  route: "none" | "user-files" | "local-memory" | "hybrid" | "external";
+  reason: string;
 };
 
 function normalize(text: string) {
-  return String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-export function detectSourceRequest(text: string) {
-  return /\b(avec sources?|source\??|sources\??|citation|cite|preuve|preuves|reference|references|référence|références|d ou tu sors|d’où tu sors|lien|liens)\b/i.test(text);
+export function shouldUseKnowledgeRouter(input: KnowledgeInput) {
+  const q = normalize(input.query);
+  const asksFiles = /\b(fichier|document|upload|piece jointe|pdf|docx|csv|source utilisateur|mes sources|ce fichier|dans le fichier)\b/.test(q);
+  const asksProject = /\b(nimbray|projet|workspace|roadmap|branche|github|vercel|api|backend|frontend|agent ia|agent backend|agent frontend)\b/.test(q);
+  const asksResearch = /\b(source|sources|citation|preuve|recherche|verifie|explique|definition|documente|internet|web|mdn|arxiv|pubmed)\b/.test(q);
+  const longQuestion = input.query.length > 260;
+  return input.sourceRequested || asksFiles || asksProject || asksResearch || longQuestion || ["document", "research"].includes(input.conversationIntent) || ["document", "research", "super_brain", "project"].includes(input.platformIntent);
 }
 
-export function routeKnowledge(input: {
-  latestUser: string;
-  conversationIntent?: string;
-  platformIntent?: string;
-  userKnowledgeCount?: number;
-}): KnowledgeRoute {
-  const latestUser = input.latestUser || "";
-  const q = normalize(latestUser);
-  const reasons: string[] = [];
-  const wantsSources = detectSourceRequest(latestUser);
+function pickRoute(input: KnowledgeInput): KnowledgeRouteResult["route"] {
+  const q = normalize(input.query);
+  const hasUserKnowledge = input.userKnowledge.length > 0;
+  const asksFiles = /\b(fichier|document|upload|piece jointe|pdf|docx|csv|mes sources|ce fichier|dans le fichier)\b/.test(q);
+  const asksProject = /\b(nimbray|projet|workspace|roadmap|branche|github|vercel|api|backend|frontend|agent ia)\b/.test(q);
+  if (hasUserKnowledge && asksFiles) return "user-files";
+  if (asksProject) return hasUserKnowledge ? "hybrid" : "local-memory";
+  if (input.sourceRequested || /\b(web|internet|citation|source|sources|recherche|verifie|mdn|arxiv|pubmed)\b/.test(q)) return hasUserKnowledge ? "hybrid" : "external";
+  if (hasUserKnowledge) return "hybrid";
+  return "local-memory";
+}
 
-  const projectSignals = /\b(nimbray|projet ia|vercel|github|pull request|branche|backend|frontend|agent ia|agent produit|workspace|checkpoint|knowledge router|main|ci|deploy|deploiement)\b/.test(q);
-  const uploadedSignals = /\b(document|fichier|source jointe|sources jointes|piece jointe|pdf|docx|csv|json|base locale|mes sources|ce fichier|dans le fichier|uploaded|upload)\b/.test(q);
-  const researchSignals = /\b(recherche|analyse|compare|comparaison|audit|strategie|roadmap|veille|recent|actuel|aujourd hui|derniere version|latest|sources|preuve|citation)\b/.test(q);
-  const factualSignals = /\b(qui est|qu est ce que|definition|explique|pourquoi|comment|combien|date|loi|prix|version|documentation)\b/.test(q);
+export async function routeKnowledge(input: KnowledgeInput): Promise<KnowledgeRouteResult> {
+  if (process.env.ENABLE_FREE_SOURCES === "false" || !shouldUseKnowledgeRouter(input)) {
+    return { context: "", sources: [], route: "none", reason: "contexte non nécessaire pour cette demande" };
+  }
 
-  if (wantsSources) reasons.push("sources explicites demandées");
-  if (projectSignals) reasons.push("contexte projet Nimbray détecté");
-  if (uploadedSignals) reasons.push("documents ou sources utilisateur détectés");
-  if (researchSignals) reasons.push("demande de recherche/analyse détectée");
-  if (factualSignals) reasons.push("question factuelle détectée");
+  const route = pickRoute(input);
+  if (route === "user-files") {
+    const sources = rankUserKnowledge(input.query, input.userKnowledge, Number(process.env.USER_KNOWLEDGE_TOP_K || process.env.RAG_TOP_K || 5));
+    return { context: formatContext(sources), sources, route, reason: "priorité aux fichiers utilisateur" };
+  }
 
-  let kind: KnowledgeRoute["kind"] = "direct";
-  if (projectSignals) kind = "project";
-  else if (uploadedSignals && (input.userKnowledgeCount || 0) > 0) kind = "user_knowledge";
-  else if (researchSignals || input.conversationIntent === "research" || input.platformIntent === "research" || input.platformIntent === "super_brain") kind = "research";
-  else if (wantsSources || latestUser.length > 260) kind = "web_like";
-  else if (uploadedSignals) kind = "user_knowledge";
-  else if (factualSignals) kind = "local";
+  if (route === "local-memory") {
+    const sources = loadInternalKnowledge(input.query);
+    return { context: formatContext(sources), sources, route, reason: "priorité à la mémoire projet locale" };
+  }
 
-  const shouldBuildContext =
-    wantsSources ||
-    kind === "user_knowledge" ||
-    kind === "research" ||
-    kind === "web_like" ||
-    (kind === "project" && latestUser.length > 180);
-
-  const confidence: KnowledgeRoute["confidence"] = reasons.length >= 2 ? "high" : reasons.length === 1 ? "medium" : "low";
-  const reasonText = reasons.length ? reasons.join(" ; ") : "aucune source externe nécessaire";
-
+  const built = await buildContext(input.query, input.userKnowledge);
   return {
-    kind,
-    shouldBuildContext,
-    wantsSources,
-    confidence,
-    reasons,
-    guidance:
-      `Knowledge Router V89 : route=${kind}, contexte=${shouldBuildContext ? "chargé" : "non chargé"}, confiance=${confidence}. ` +
-      `Raison : ${reasonText}. ` +
-      `Réponds avec les sources seulement si l'utilisateur les demande ou si elles sont indispensables. ` +
-      `Si aucune source fiable n'est disponible, dis clairement ce qui est connu, supposé ou à vérifier.`
+    context: built.context,
+    sources: built.sources,
+    route,
+    reason: route === "hybrid" ? "mélange fichiers utilisateur, mémoire locale et sources gratuites" : "sources gratuites externes activées"
   };
 }
 
-export function knowledgeRouterSummary() {
-  return {
-    version: "v89",
-    routes: ["direct", "local", "user_knowledge", "project", "research", "web_like"],
-    default: "direct"
-  };
+function formatContext(sources: SourceSnippet[]) {
+  if (!sources.length) return "";
+  return sources.slice(0, Number(process.env.RAG_TOP_K || 6)).map((source, index) => {
+    return `[Source ${index + 1}] ${source.title}\nType: ${source.type || "local"}\n${source.url ? `URL: ${source.url}\n` : ""}${source.content}`;
+  }).join("\n\n---\n\n");
+}
+
+export function knowledgeRouterGuidance(result: KnowledgeRouteResult) {
+  if (result.route === "none") return "Knowledge Router V90 : aucune source ajoutée, répondre naturellement.";
+  return `Knowledge Router V90 : route=${result.route}, raison=${result.reason}. Utilise les sources comme contexte prioritaire sans inventer. Si les sources ne suffisent pas, dis-le simplement.`;
 }

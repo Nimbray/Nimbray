@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import { providerStatus } from "../../../lib/provider-router";
 
 export async function GET() {
+  const providerRouter = await providerStatus();
   return NextResponse.json({
     ok: true,
     service: "nimbrayai",
-    version: "89.1.0",
-    timestamp: new Date().toISOString(),
-    provider: process.env.AI_PROVIDER || "demo"
+    version: "v90-intelligent-project-brain",
+    providerRouter: {
+      activeProvider: providerRouter.activeProvider,
+      plan: providerRouter.plan,
+      providers: providerRouter.providers
+    },
+    routes: {
+      chat: true,
+      status: true,
+      health: true,
+      parseDoc: process.env.ENABLE_DOCUMENT_PARSING !== "false"
+    }
   });
 }
