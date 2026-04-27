@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { buildSystemPrompt } from "../../../lib/brain";
 import { demoReply } from "../../../lib/demo-engine";
 import { buildContext } from "../../../lib/free-sources";
@@ -16,73 +16,19 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
-import { buildV87StyleGuidance, polishNimbrayResponse } from "../../../lib/response-polish";
+import { routeKnowledge, detectSourceRequest } from "../../../lib/knowledge-router";
+import { apiError, assertRequestSize, fetchJsonWithTimeout, jsonError, safeJsonParse } from "../../../lib/api-utils";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
 type ProviderResult = { content: string; model: string; intent?: string; fallbackUsed?: boolean; sources?: string[] };
-
-class ChatRequestError extends Error {
-  status: number;
-  code: string;
-  details?: Record<string, unknown>;
-
-  constructor(message: string, status = 400, code = "BAD_REQUEST", details?: Record<string, unknown>) {
-    super(message);
-    this.name = "ChatRequestError";
-    this.status = status;
-    this.code = code;
-    this.details = details;
-  }
-}
-
-type ApiErrorPayload = {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
-  requestId: string;
-};
-
-type ChatLogFields = Record<string, string | number | boolean | null | undefined>;
-
-const SUPPORTED_ATTACHMENT_TYPES = new Set([
-  "application/octet-stream",
-  "application/pdf",
-  "application/json",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/plain",
-  "text/markdown",
-  "text/csv"
-]);
-
-function createRequestId() {
-  return `chat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function logChatEvent(level: "info" | "warn" | "error", event: string, fields: ChatLogFields = {}) {
-  const payload = { service: "nimbray-api-chat", event, ...fields };
-  const line = JSON.stringify(payload);
-  if (level === "error") console.error(line);
-  else if (level === "warn") console.warn(line);
-  else console.info(line);
-}
-
-function apiErrorPayload(message: string, code: string, requestId: string, details?: Record<string, unknown>): ApiErrorPayload {
-  return { code, message, ...(details ? { details } : {}), requestId };
-}
-
-function isSupportedAttachmentType(type: string) {
-  const normalized = (type || "application/octet-stream").toLowerCase();
-  return normalized.startsWith("image/") || SUPPORTED_ATTACHMENT_TYPES.has(normalized);
-}
 
 function norm(text: string) {
   return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function wantsSources(text: string) {
-  return /\b(avec sources?|source\??|sources\??|citation|cite|preuve|preuves|reference|references|rÃ©fÃ©rence|rÃ©fÃ©rences|d ou tu sors|dâ€™oÃ¹ tu sors)\b/i.test(text);
+  return detectSourceRequest(text);
 }
 
 function isMicroDialogue(text: string) {
@@ -92,14 +38,14 @@ function isMicroDialogue(text: string) {
 
 function localMicroReply(text: string) {
   const q = norm(text);
-  if (/^(merci|merci beaucoup)$/.test(q)) return "Avec plaisir ðŸ˜Š";
+  if (/^(merci|merci beaucoup)$/.test(q)) return "Avec plaisir 😊";
   if (/^(ok|okay|d accord|oui|parfait|top|nickel|super)$/.test(q)) return "Parfait. On continue quand tu veux.";
-  if (/^(non)$/.test(q)) return "Dâ€™accord. Dis-moi ce que tu veux changer, et je mâ€™adapte.";
-  if (/^(pas mal)$/.test(q)) return "Merci ! On peut encore amÃ©liorer si tu veux : plus clair, plus naturel, ou plus complet.";
-  if (/^(bof)$/.test(q)) return "Je vois. Quâ€™est-ce qui te semble moyen : le style, le fond, ou le niveau de dÃ©tail ? Je peux reprendre mieux.";
-  if (/^(haha|mdr|lol)$/.test(q)) return "ðŸ˜„ Content de tâ€™avoir fait rÃ©agir. On continue ?";
-  if (/^(continue|vas y|vas y continue|go|encore)$/.test(q)) return "Bien sÃ»r, je continue. Donne-moi juste le fil ou la derniÃ¨re idÃ©e Ã  dÃ©velopper.";
-  if (/^(je comprends pas|pas compris|plus simple)$/.test(q)) return "Pas de souci. Je peux reprendre plus simplement, Ã©tape par Ã©tape, sans jargon.";
+  if (/^(non)$/.test(q)) return "D’accord. Dis-moi ce que tu veux changer, et je m’adapte.";
+  if (/^(pas mal)$/.test(q)) return "Merci ! On peut encore améliorer si tu veux : plus clair, plus naturel, ou plus complet.";
+  if (/^(bof)$/.test(q)) return "Je vois. Qu’est-ce qui te semble moyen : le style, le fond, ou le niveau de détail ? Je peux reprendre mieux.";
+  if (/^(haha|mdr|lol)$/.test(q)) return "😄 Content de t’avoir fait réagir. On continue ?";
+  if (/^(continue|vas y|vas y continue|go|encore)$/.test(q)) return "Bien sûr, je continue. Donne-moi juste le fil ou la dernière idée à développer.";
+  if (/^(je comprends pas|pas compris|plus simple)$/.test(q)) return "Pas de souci. Je peux reprendre plus simplement, étape par étape, sans jargon.";
   if (/^(tu peux faire mieux|c est pas bon)$/.test(q)) return "Tu as raison de me le dire. Je peux faire mieux : je reprends plus clairement, plus utilement, et sans tourner autour du pot.";
   if (/^(c est faux)$/.test(q)) return "Merci de me le signaler. Je peux corriger : dis-moi ce qui est faux, ou colle la bonne info, et je reformule proprement.";
   return "Je te suis. Dis-moi la suite.";
@@ -108,36 +54,36 @@ function localMicroReply(text: string) {
 function localPracticalReply(text: string) {
   const q = norm(text);
   if (/\b(enterrer|enterrement|inhumation|obseques|deces|grand mere|grand pere|funerailles)\b/.test(q)) {
-    return `Je suis dÃ©solÃ© pour ta grand-mÃ¨re. Oui, tu peux participer Ã  lâ€™organisation de son enterrement, mais il faut passer par les dÃ©marches officielles.
+    return `Je suis désolé pour ta grand-mère. Oui, tu peux participer à l’organisation de son enterrement, mais il faut passer par les démarches officielles.
 
-En France, en gÃ©nÃ©ral, il faut dâ€™abord que le dÃ©cÃ¨s soit constatÃ©, puis dÃ©clarÃ© Ã  la mairie du lieu du dÃ©cÃ¨s. Ensuite, lâ€™inhumation ou la crÃ©mation sâ€™organise avec une entreprise de pompes funÃ¨bres, qui peut tâ€™aider pour les autorisations, le transport, le cercueil, la cÃ©rÃ©monie et le lien avec la mairie ou le cimetiÃ¨re.
+En France, en général, il faut d’abord que le décès soit constaté, puis déclaré à la mairie du lieu du décès. Ensuite, l’inhumation ou la crémation s’organise avec une entreprise de pompes funèbres, qui peut t’aider pour les autorisations, le transport, le cercueil, la cérémonie et le lien avec la mairie ou le cimetière.
 
 Le plus simple maintenant :
-1. contacte une entreprise de pompes funÃ¨bres ;
-2. contacte la mairie concernÃ©e ;
-3. rassemble les documents demandÃ©s, notamment le certificat de dÃ©cÃ¨s et les piÃ¨ces dâ€™identitÃ© ;
-4. demande les dÃ©lais et les possibilitÃ©s dâ€™inhumation dans la commune ou la concession familiale.
+1. contacte une entreprise de pompes funèbres ;
+2. contacte la mairie concernée ;
+3. rassemble les documents demandés, notamment le certificat de décès et les pièces d’identité ;
+4. demande les délais et les possibilités d’inhumation dans la commune ou la concession familiale.
 
-Si tu nâ€™es pas en France, les rÃ¨gles peuvent changer. Dis-moi le pays ou la commune, et je te fais une checklist plus adaptÃ©e.`;
+Si tu n’es pas en France, les règles peuvent changer. Dis-moi le pays ou la commune, et je te fais une checklist plus adaptée.`;
   }
   if (/\b(heritage|succession|heriter|notaire)\b/.test(q)) {
-    return `Un hÃ©ritage se rÃ¨gle gÃ©nÃ©ralement en plusieurs Ã©tapes. En France, on commence par identifier les hÃ©ritiers, vÃ©rifier sâ€™il existe un testament, puis contacter un notaire si la succession contient un bien immobilier, un testament, une donation entre Ã©poux, ou si la situation familiale est complexe.
+    return `Un héritage se règle généralement en plusieurs étapes. En France, on commence par identifier les héritiers, vérifier s’il existe un testament, puis contacter un notaire si la succession contient un bien immobilier, un testament, une donation entre époux, ou si la situation familiale est complexe.
 
 En pratique :
-1. rÃ©cupÃ¨re lâ€™acte de dÃ©cÃ¨s ;
-2. rassemble livret de famille, piÃ¨ces dâ€™identitÃ©, documents bancaires et biens connus ;
-3. contacte un notaire si nÃ©cessaire ;
-4. attends lâ€™Ã©tablissement de lâ€™acte de notoriÃ©tÃ© ;
-5. les hÃ©ritiers dÃ©cident ensuite de lâ€™acceptation ou non de la succession.
+1. récupère l’acte de décès ;
+2. rassemble livret de famille, pièces d’identité, documents bancaires et biens connus ;
+3. contacte un notaire si nécessaire ;
+4. attends l’établissement de l’acte de notoriété ;
+5. les héritiers décident ensuite de l’acceptation ou non de la succession.
 
 Je peux te faire une checklist simple si tu me dis le pays et la situation : conjoint, enfants, testament, maison, comptes bancaires, etc.`;
   }
   if (/\b(porter plainte|plainte|menace|menaces|police|gendarmerie)\b/.test(q)) {
-    return `Si tu es menacÃ© ou victime dâ€™une infraction, tu peux contacter la police ou la gendarmerie. Si le danger est immÃ©diat, appelle le 17 ou le 112.
+    return `Si tu es menacé ou victime d’une infraction, tu peux contacter la police ou la gendarmerie. Si le danger est immédiat, appelle le 17 ou le 112.
 
-Pour une plainte, garde les preuves : messages, captures dâ€™Ã©cran, dates, tÃ©moins, photos, certificats mÃ©dicaux si besoin. Tu peux ensuite te rendre au commissariat ou Ã  la gendarmerie, ou te renseigner sur les dÃ©marches officielles en ligne selon ta situation.
+Pour une plainte, garde les preuves : messages, captures d’écran, dates, témoins, photos, certificats médicaux si besoin. Tu peux ensuite te rendre au commissariat ou à la gendarmerie, ou te renseigner sur les démarches officielles en ligne selon ta situation.
 
-Si tu veux, raconte-moi briÃ¨vement ce qui sâ€™est passÃ©, et je tâ€™aide Ã  prÃ©parer un rÃ©sumÃ© clair des faits.`;
+Si tu veux, raconte-moi brièvement ce qui s’est passé, et je t’aide à préparer un résumé clair des faits.`;
   }
   return null;
 }
@@ -145,31 +91,31 @@ Si tu veux, raconte-moi briÃ¨vement ce qui sâ€™est passÃ©, et je tâ€
 function localLightKnowledgeReply(text: string) {
   const q = norm(text);
   if (/\b(blague|raconte moi une blague|fais moi rire)\b/.test(q)) {
-    return `Pourquoi les plongeurs plongent-ils toujours en arriÃ¨re ?
+    return `Pourquoi les plongeurs plongent-ils toujours en arrière ?
 
-Parce que sinon, ils tombent dans le bateau. ðŸ˜„`;
+Parce que sinon, ils tombent dans le bateau. 😄`;
   }
   if (/\b(recette|jambon|pates|quiche|cuisine)\b/.test(q) && /\b(jambon|recette)\b/.test(q)) {
-    return `Bien sÃ»r ! Voici une recette simple :
+    return `Bien sûr ! Voici une recette simple :
 
 **Quiche jambon-fromage**
 
-**IngrÃ©dients**
-- 1 pÃ¢te brisÃ©e
-- 200 g de jambon en dÃ©s
-- 150 g de fromage rÃ¢pÃ©
-- 3 Å“ufs
-- 20 cl de crÃ¨me ou de lait
+**Ingrédients**
+- 1 pâte brisée
+- 200 g de jambon en dés
+- 150 g de fromage râpé
+- 3 œufs
+- 20 cl de crème ou de lait
 - Sel, poivre
 
-**PrÃ©paration**
-1. PrÃ©chauffe le four Ã  180 Â°C.
-2. Mets la pÃ¢te dans un moule.
-3. MÃ©lange les Å“ufs, la crÃ¨me, le jambon et le fromage.
-4. Sale lÃ©gÃ¨rement, poivre, puis verse sur la pÃ¢te.
-5. Fais cuire 30 Ã  40 minutes, jusquâ€™Ã  ce que la quiche soit bien dorÃ©e.
+**Préparation**
+1. Préchauffe le four à 180 °C.
+2. Mets la pâte dans un moule.
+3. Mélange les œufs, la crème, le jambon et le fromage.
+4. Sale légèrement, poivre, puis verse sur la pâte.
+5. Fais cuire 30 à 40 minutes, jusqu’à ce que la quiche soit bien dorée.
 
-Astuce : avec une salade verte, Ã§a fait un repas simple et efficace.`;
+Astuce : avec une salade verte, ça fait un repas simple et efficace.`;
   }
   return null;
 }
@@ -185,225 +131,73 @@ function compactPrompt(prompt: string) {
   const tail = prompt.slice(-Math.floor(max * 0.40));
   return `${head}
 
-[Contexte intermÃ©diaire rÃ©duit pour Ã©conomiser les tokens]
+[Contexte intermédiaire réduit pour économiser les tokens]
 
 ${tail}`;
 }
 
 function groqFriendlyError(raw: string) {
   if (/rate_limit|Rate limit|Request too large|tokens per minute|TPM/i.test(raw)) {
-    return "Je suis un peu ralenti lÃ . RÃ©essaie dans quelques secondes, ou envoie une question plus courte.";
+    return "Je suis un peu ralenti là. Réessaie dans quelques secondes, ou envoie une question plus courte. Je reste disponible.";
   }
-  if (/GROQ_API_KEY/i.test(raw)) return "Groq nâ€™est pas encore configurÃ©. Le site peut continuer en mode dÃ©mo, mais la vraie IA publique demande une clÃ© Groq dans Vercel.";
-  return "Je nâ€™ai pas pu rÃ©pondre correctement cette fois. RÃ©essaie dans quelques secondes.";
+  if (/GROQ_API_KEY/i.test(raw)) return "Groq n’est pas encore configuré. Le site peut continuer en mode démo, mais la vraie IA publique demande une clé Groq dans Vercel.";
+  return "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
 }
 
 
+const MAX_CHAT_REQUEST_BYTES = Number(process.env.CHAT_MAX_REQUEST_BYTES || 8 * 1024 * 1024);
+const PROVIDER_TIMEOUT_MS = Number(process.env.PROVIDER_TIMEOUT_MS || 24000);
 
-type ChatAttachment = {
-  id?: string;
-  name: string;
-  type: string;
-  size: number;
-  kind: "image" | "document";
-  text?: string;
-};
-
-function isRecord(value: unknown): value is Record<string, any> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
+function sanitizeMessages(raw: unknown): ChatMessage[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((m) => m && typeof m === "object")
+    .map((m: any) => ({ role: m.role, content: String(m.content || "").slice(0, 6000) }))
+    .filter((m) => ["user", "assistant", "system"].includes(m.role) && m.content.trim())
+    .slice(-12) as ChatMessage[];
 }
 
-function errorResponse(message: string, status: number, code: string, requestId: string, details?: Record<string, unknown>) {
-  return NextResponse.json(
-    {
-      ok: false,
-      error: message,
-      code,
-      requestId,
-      apiError: apiErrorPayload(message, code, requestId, details)
-    },
-    { status }
-  );
-}
-
-async function readChatBody(req: Request) {
+async function parseChatRequest(req: Request) {
+  assertRequestSize(req, MAX_CHAT_REQUEST_BYTES);
   const contentType = req.headers.get("content-type") || "";
 
   if (contentType.includes("multipart/form-data")) {
-    let form: FormData;
-    try {
-      form = await req.formData();
-    } catch {
-      throw new ChatRequestError("Payload multipart invalide.", 400, "MULTIPART_PAYLOAD_INVALID");
-    }
-
+    const form = await req.formData();
     const rawMessages = form.get("messages");
-    const rawMessage = form.get("message");
+    const rawMessage = form.get("message") || form.get("prompt") || form.get("text");
     const rawMemory = form.get("memory");
-    const rawUserKnowledge = form.get("userKnowledge");
-    const rawResponseMode = form.get("responseMode");
-    const rawProjectContext = form.get("projectContext");
-    const rawAttachments = form.get("attachments");
+    const rawKnowledge = form.get("userKnowledge");
 
-    const parseJsonField = (value: FormDataEntryValue | null, fallback: any) => {
-      if (typeof value !== "string" || !value.trim()) return fallback;
-      try {
-        return JSON.parse(value);
-      } catch {
-        return fallback;
-      }
-    };
-
-    const messages = typeof rawMessages === "string" && rawMessages.trim()
-      ? parseJsonField(rawMessages, [])
-      : typeof rawMessage === "string" && rawMessage.trim()
-      ? [{ role: "user", content: rawMessage }]
-      : [];
-
-    const declaredAttachments = parseJsonField(rawAttachments, []);
-    const fileEntries = Array.from(form.entries()).filter(([, value]) => typeof File !== "undefined" && value instanceof File);
-    const fileAttachments = await Promise.all(
-      fileEntries.map(async ([field, value]) => {
-        const file = value as File;
-        const type = file.type || "application/octet-stream";
-        const canReadText = type.startsWith("text/") || ["application/json", "text/markdown", "text/csv"].includes(type);
-        const text = canReadText ? (await file.text()).slice(0, 12000) : undefined;
-        return {
-          id: field,
-          name: file.name || field,
-          type,
-          size: file.size || 0,
-          kind: type.startsWith("image/") ? "image" : "document",
-          ...(text ? { text } : {})
-        };
-      })
-    );
+    let messages: ChatMessage[] = [];
+    if (typeof rawMessages === "string" && rawMessages.trim()) {
+      messages = sanitizeMessages(safeJsonParse<unknown>(rawMessages, [], "messages"));
+    } else if (typeof rawMessage === "string" && rawMessage.trim()) {
+      messages = [{ role: "user", content: rawMessage.trim().slice(0, 6000) }];
+    }
 
     return {
       messages,
-      memory: parseJsonField(rawMemory, []),
-      userKnowledge: parseJsonField(rawUserKnowledge, []),
-      responseMode: typeof rawResponseMode === "string" ? rawResponseMode : "auto",
-      projectContext: parseJsonField(rawProjectContext, undefined),
-      attachments: [...(Array.isArray(declaredAttachments) ? declaredAttachments : []), ...fileAttachments]
+      memory: typeof rawMemory === "string" ? safeJsonParse<unknown[]>(rawMemory, [], "memory") : [],
+      userKnowledge: typeof rawKnowledge === "string" ? safeJsonParse<unknown[]>(rawKnowledge, [], "userKnowledge") : [],
+      responseMode: form.get("responseMode") || "auto",
+      projectContext: undefined
     };
   }
 
-  if (contentType.includes("application/json") || !contentType || contentType === "unknown") {
-    try {
-      return await req.json();
-    } catch {
-      throw new ChatRequestError("RequÃªte chat invalide : le JSON envoyÃ© nâ€™est pas lisible.", 400, "INVALID_JSON");
-    }
+  if (!contentType.includes("application/json") && contentType.trim()) {
+    throw apiError(415, "UNSUPPORTED_MEDIA_TYPE", "Format de requête non supporté. Utilise application/json ou multipart/form-data.");
   }
 
-  throw new ChatRequestError("Type de contenu non supportÃ© pour /api/chat.", 415, "UNSUPPORTED_CONTENT_TYPE", { contentType: contentType.split(";")[0] });
-}
-
-function normalizeMessages(value: unknown): ChatMessage[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!isRecord(item)) return null;
-      const role = item.role === "assistant" || item.role === "system" ? item.role : "user";
-      const content = typeof item.content === "string" ? item.content : "";
-      return content.trim() ? ({ role, content } as ChatMessage) : null;
-    })
-    .filter(Boolean) as ChatMessage[];
-}
-
-function normalizeAttachments(value: unknown): ChatAttachment[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((item, index) => {
-      if (!isRecord(item)) return null;
-      const type = String(item.type || item.mimeType || "application/octet-stream").toLowerCase();
-      const name = String(item.name || item.filename || `attachment-${index + 1}`);
-      const size = Number(item.size || item.sizeBytes || 0);
-      const text = typeof item.text === "string" ? item.text.slice(0, 12000) : undefined;
-      return {
-        id: String(item.id || `attachment-${index + 1}`),
-        name,
-        type,
-        size: Number.isFinite(size) ? Math.max(0, size) : 0,
-        kind: type.startsWith("image/") ? "image" : "document",
-        ...(text ? { text } : {})
-      } as ChatAttachment;
-    })
-    .filter(Boolean) as ChatAttachment[];
-}
-
-function enforceAttachmentLimits(attachments: ChatAttachment[]) {
-  const maxFiles = Number(process.env.MAX_UPLOAD_FILES || 5);
-  const maxFileBytes = Number(process.env.MAX_UPLOAD_FILE_SIZE_MB || 10) * 1024 * 1024;
-  const maxTotalBytes = Number(process.env.MAX_UPLOAD_TOTAL_SIZE_MB || 20) * 1024 * 1024;
-
-  if (attachments.length > maxFiles) {
-    throw new ChatRequestError("Trop de piÃ¨ces jointes envoyÃ©es.", 413, "TOO_MANY_ATTACHMENTS", { maxFiles });
+  try {
+    const body = await req.json();
+    return { ...body, messages: sanitizeMessages(body?.messages) };
+  } catch {
+    throw apiError(400, "INVALID_JSON", "JSON invalide ou corps de requête vide.");
   }
-
-  let total = 0;
-  for (const attachment of attachments) {
-    if (attachment.size <= 0) {
-      throw new ChatRequestError("Un fichier envoyÃ© est vide.", 400, "EMPTY_FILE", { name: attachment.name });
-    }
-    if (attachment.size > maxFileBytes) {
-      throw new ChatRequestError("Un fichier dÃ©passe la limite autorisÃ©e.", 413, "UPLOAD_TOO_LARGE", { maxFileSizeMb: Number(process.env.MAX_UPLOAD_FILE_SIZE_MB || 10) });
-    }
-    if (!isSupportedAttachmentType(attachment.type)) {
-      throw new ChatRequestError("Type de fichier non supportÃ©.", 415, "UNSUPPORTED_FILE_TYPE", { type: attachment.type });
-    }
-    total += attachment.size;
-  }
-
-  if (total > maxTotalBytes) {
-    throw new ChatRequestError("Le total des piÃ¨ces jointes dÃ©passe la limite autorisÃ©e.", 413, "UPLOAD_TOTAL_TOO_LARGE", { maxTotalSizeMb: Number(process.env.MAX_UPLOAD_TOTAL_SIZE_MB || 20) });
-  }
-}
-
-function attachmentPublicMeta(attachments: ChatAttachment[]) {
-  return attachments.map((item) => ({
-    id: item.id,
-    name: item.name,
-    type: item.type,
-    size: item.size,
-    kind: item.kind,
-    hasText: !!item.text
-  }));
-}
-
-function hasAttachmentSignal(latestUser: string, attachments: ChatAttachment[]) {
-  return attachments.length > 0 || /\[(Images?|Fichiers?|PiÃ¨ces jointes?) jointes?/i.test(latestUser);
-}
-
-function attachmentGuidance(attachments: ChatAttachment[]) {
-  if (!attachments.length) return "";
-  const images = attachments.filter((item) => item.kind === "image");
-  const documents = attachments.filter((item) => item.kind !== "image");
-  const parts: string[] = [];
-
-  if (images.length) {
-    parts.push(`[Images jointes par lâ€™utilisateur : ${images.map((item) => item.name).join(", ")} â€” analyse vision directe non disponible cÃ´tÃ© serveur.]`);
-  }
-
-  for (const doc of documents) {
-    if (doc.text) {
-      parts.push(`[Document joint : ${doc.name}]\n${doc.text.slice(0, 4000)}`);
-    } else {
-      parts.push(`[Document joint : ${doc.name} â€” contenu texte non extrait.]`);
-    }
-  }
-
-  return `\n\n${parts.join("\n\n")}`;
 }
 
 async function callJson(url: string, init: RequestInit) {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Erreur ${response.status}`);
-  }
-  return response.json();
+  return fetchJsonWithTimeout(url, init, PROVIDER_TIMEOUT_MS);
 }
 
 async function ollamaTags(baseUrl: string) {
@@ -458,13 +252,13 @@ async function ollamaReply(messages: ChatMessage[], systemPrompt: string, latest
       options: { temperature: intent === "creative" ? 0.82 : 0.68 }
     })
   });
-  return { content: data?.message?.content || "Aucune rÃ©ponse du modÃ¨le local.", model: selected.model, intent, fallbackUsed: selected.fallbackUsed };
+  return { content: data?.message?.content || "Aucune réponse du modèle local.", model: selected.model, intent, fallbackUsed: selected.fallbackUsed };
 }
 
 async function groqReply(messages: ChatMessage[], systemPrompt: string): Promise<ProviderResult> {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error("GROQ_API_KEY manquante");
-  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+  const model = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
   const data = await callJson("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
@@ -475,7 +269,7 @@ async function groqReply(messages: ChatMessage[], systemPrompt: string): Promise
       messages: [{ role: "system", content: compactPrompt(systemPrompt) }, ...compactHistory(messages)]
     })
   });
-  return { content: data?.choices?.[0]?.message?.content || "Aucune rÃ©ponse Groq.", model };
+  return { content: data?.choices?.[0]?.message?.content || "Aucune réponse Groq.", model };
 }
 
 async function openRouterReply(messages: ChatMessage[], systemPrompt: string): Promise<ProviderResult> {
@@ -487,54 +281,32 @@ async function openRouterReply(messages: ChatMessage[], systemPrompt: string): P
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "http://localhost:3000", "X-Title": "NimbrayAI" },
     body: JSON.stringify({ model, temperature: 0.7, messages: [{ role: "system", content: systemPrompt }, ...messages] })
   });
-  return { content: data?.choices?.[0]?.message?.content || "Aucune rÃ©ponse OpenRouter.", model };
+  return { content: data?.choices?.[0]?.message?.content || "Aucune réponse OpenRouter.", model };
 }
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
-  const requestId = createRequestId();
-  const startedAt = Date.now();
-  const contentType = req.headers.get("content-type") || "unknown";
   try {
-    const body = await readChatBody(req);
-    if (!isRecord(body)) return errorResponse("RequÃªte chat invalide.", 400, "INVALID_BODY", requestId);
+    const body = await parseChatRequest(req);
+    const messages = sanitizeMessages(body?.messages || []);
+    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni.", code: "BAD_REQUEST", ok: false }, { status: 400 });
 
-    const attachments = normalizeAttachments(body.attachments);
-    enforceAttachmentLimits(attachments);
-    const messages = normalizeMessages(body.messages);
-    if (!messages.length) return errorResponse("Aucun message fourni.", 400, "NO_MESSAGES", requestId);
-
-    logChatEvent("info", "request_validated", {
-      requestId,
-      contentType: contentType.split(";")[0],
-      messages: messages.length,
-      attachments: attachments.length,
-      attachmentBytes: attachments.reduce((sum, item) => sum + Math.max(0, item.size || 0), 0)
-    });
-
-    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
-    const userKnowledge = Array.isArray(body.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
-    const latestUserMessage = [...messages].reverse().find((m) => m.role === "user");
-    const latestUser = `${latestUserMessage?.content || ""}${attachmentGuidance(attachments)}`.trim();
-    if (latestUserMessage) latestUserMessage.content = latestUser;
-    const responseMode = inferResponseMode(latestUser, (body.responseMode || "auto") as ResponseMode);
-    const imageAttachments = attachments.filter((item) => item.kind === "image");
-    const fileAttachments = attachments.filter((item) => item.kind !== "image");
-    const hasLegacyImageSignal = /\[Images jointes par lâ€™utilisateur/i.test(latestUser);
-    const hasOnlyUnprocessableAttachments = hasAttachmentSignal(latestUser, attachments) && !fileAttachments.some((item) => item.text) && (imageAttachments.length > 0 || hasLegacyImageSignal);
-    if (hasOnlyUnprocessableAttachments) {
+    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
+    const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
+    const latestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const responseMode = inferResponseMode(latestUser, (body?.responseMode || "auto") as ResponseMode);
+    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
+    if (hasImageAttachment) {
       return NextResponse.json({
-        ok: true,
-        content: imageAttachments.length > 1
-          ? `Jâ€™ai bien reÃ§u les ${imageAttachments.length} images. Je peux les garder affichÃ©es dans la conversation, mais cette version serveur ne dispose pas encore dâ€™un modÃ¨le vision pour les analyser directement. DÃ©cris-moi ce que tu veux vÃ©rifier sur les images, et je tâ€™aide prÃ©cisÃ©ment Ã  partir de ta description.`
-          : "Jâ€™ai bien reÃ§u lâ€™image. Je peux lâ€™afficher dans la conversation, mais cette version serveur ne dispose pas encore dâ€™un modÃ¨le vision pour lâ€™analyser directement. DÃ©cris-moi ce que tu veux vÃ©rifier sur lâ€™image, et je tâ€™aide prÃ©cisÃ©ment Ã  partir de ta description.",
+        content: "J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. Décris-moi ce que tu veux vérifier sur l’image, ou active plus tard un modèle vision pour que NimbrayAI puisse l’observer directement.",
         provider: "nimbray-local",
-        model: "v87-observability-api",
-        intent: "attachment-upload",
+        model: "v77-image-upload-stability",
+        intent: "image-upload",
         responseMode,
         fallbackUsed: false,
-        sourcesUsed: [],
-        attachments: attachmentPublicMeta(attachments),
-        requestId
+        sourcesUsed: []
       });
     }
     const maxProfile = analyzeMaxIntelligence(latestUser, messages);
@@ -542,7 +314,7 @@ export async function POST(req: Request) {
       latestUser,
       messages,
       memory,
-      projectContext: body?.projectContext || { projectName: "NimbrayAI", focus: "Ã©volution IA conversationnelle, sÃ©curitÃ©, mÃ©moire projet et qualitÃ©" }
+      projectContext: body?.projectContext || { projectName: "NimbrayAI", focus: "évolution IA conversationnelle, sécurité, mémoire projet et qualité" }
     });
     const safety = assessSafetyWithContext(latestUser, messages);
     if (safety.shouldIntercept && safety.response) {
@@ -571,13 +343,13 @@ export async function POST(req: Request) {
     }
 
     // V82 Expert Team Orchestrator : transforme les demandes projet ambitieuses
-    // en sprint coordonnÃ© Produit + IA + Backend + Frontend avec workspaces sÃ©parÃ©s.
+    // en sprint coordonné Produit + IA + Backend + Frontend avec workspaces séparés.
     const expertTeam = expertTeamReply(latestUser, messages);
     if (expertTeam) {
       return NextResponse.json({
         content: expertTeam.content,
         provider: "nimbray-local",
-        model: "v87-natural-product-brain",
+        model: "v82-collaborative-workspaces",
         intent: expertTeam.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -585,7 +357,7 @@ export async function POST(req: Request) {
       });
     }
     // V76 GPT Source Intelligence : inspire NimbrayAI des principes GPTs publics
-    // sans copier de GPT privÃ©, sans inventer d accÃ¨s et sans faux liens/actions.
+    // sans copier de GPT privé, sans inventer d accès et sans faux liens/actions.
     const gptSource = gptSourceIntelligenceReply(latestUser, messages);
     if (gptSource) {
       return NextResponse.json({
@@ -600,13 +372,13 @@ export async function POST(req: Request) {
     }
 
 
-    // V72 Memory & Project Intelligence : Ã©tat projet, dÃ©cisions, roadmap et prochaine action avant les anciens moteurs.
+    // V72 Memory & Project Intelligence : état projet, décisions, roadmap et prochaine action avant les anciens moteurs.
     const projectReply = projectIntelligenceReply(latestUser, projectSnapshot);
     if (projectReply) {
       return NextResponse.json({
         content: projectReply.content,
         provider: "nimbray-local",
-        model: "v87-project-intelligence",
+        model: "v72-memory-project-intelligence",
         intent: projectReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -614,7 +386,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // V74 Max Intelligence Core : raisonnement, contraintes et rÃ©ponses pratiques avant les anciens moteurs.
+    // V74 Max Intelligence Core : raisonnement, contraintes et réponses pratiques avant les anciens moteurs.
     const maxReply = maxIntelligenceReply(latestUser, messages);
     if (maxReply) {
       return NextResponse.json({
@@ -629,7 +401,7 @@ export async function POST(req: Request) {
     }
 
     // V71.3 Contextual Safety & Knowledge Boost : micro-intentions, silence persistant,
-    // solitude, identitÃ©/orientation et dialogue naturel avant les anciens moteurs.
+    // solitude, identité/orientation et dialogue naturel avant les anciens moteurs.
     const natural = naturalIntelligenceReply(latestUser, messages);
     if (natural?.shouldIntercept) {
       return NextResponse.json({
@@ -643,8 +415,8 @@ export async function POST(req: Request) {
       });
     }
 
-    // V37 Emotional Variation Engine : les Ã©motions simples, conflits, micro-dialogues,
-    // humour, empathie et prudence sont traitÃ©s localement avant Groq.
+    // V37 Emotional Variation Engine : les émotions simples, conflits, micro-dialogues,
+    // humour, empathie et prudence sont traités localement avant Groq.
     const behavior = behaviorReply(latestUser);
     if (behavior) {
       return NextResponse.json({
@@ -672,9 +444,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // V40 Consolidated Local Brain: tout ce qui est stable, rÃ©pÃ©titif, sensible ou conversationnel
-    // est traitÃ© localement avant d'appeler Groq. Cela rend le site plus rapide,
-    // Ã©vite les rate limits et donne une personnalitÃ© plus vivante Ã  NimbrayAI.
+    // V40 Consolidated Local Brain: tout ce qui est stable, répétitif, sensible ou conversationnel
+    // est traité localement avant d'appeler Groq. Cela rend le site plus rapide,
+    // évite les rate limits et donne une personnalité plus vivante à NimbrayAI.
     const localBrain = localBrainReply(latestUser);
     if (localBrain) {
       return NextResponse.json({
@@ -704,11 +476,14 @@ export async function POST(req: Request) {
     const conversationIntent = detectConversationIntent(latestUser);
     const compassMode = detectCompassMode(latestUser);
     const platformIntent = detectIntelligenceIntent(latestUser);
-    const sourceRequested = wantsSources(latestUser);
-    // V32: ne charge pas des sources pour tout et rien. Les connaissances stables
-    // sont gÃ©rÃ©es localement ; le contexte externe est rÃ©servÃ© aux demandes longues,
-    // documentaires, de recherche ou explicitement sourcÃ©es.
-    const contextUseful = sourceRequested || ["document", "research"].includes(conversationIntent) || ["document", "research", "super_brain", "project"].includes(platformIntent) || latestUser.length > 260;
+    const knowledgeRoute = routeKnowledge({
+      latestUser,
+      conversationIntent,
+      platformIntent,
+      userKnowledgeCount: userKnowledge.length
+    });
+    const sourceRequested = knowledgeRoute.wantsSources || wantsSources(latestUser);
+    const contextUseful = knowledgeRoute.shouldBuildContext;
     const { context, sources } = contextUseful ? await buildContext(latestUser, userKnowledge) : { context: "", sources: [] as any[] };
     const guidance = `${conversationGuidance(conversationIntent, responseMode)}
 ${naturalIntelligenceGuidance()}
@@ -717,9 +492,10 @@ ${maxIntelligenceGuidance(maxProfile)}
 ${truthfulnessEmergencyGuidance()}
 ${gptSourceGuidance()}
 ${expertTeamGuidance()}
+${knowledgeRoute.guidance}
 ${safetyGuidanceForPrompt()}
-SÃ©curitÃ© dÃ©tectÃ©e : ${safety.category}. ${safety.guidance}
-V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : rÃ©ponse directe, naturelle, fiable et humaine. PrioritÃ© aux moteurs locaux consolidÃ©s avant Groq. Groq seulement si nÃ©cessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform dÃ©tectÃ© : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
+Sécurité détectée : ${safety.category}. ${safety.guidance}
+V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
     const systemPrompt = buildSystemPrompt(memory.slice(0, 5), context, guidance);
     const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
 
@@ -727,7 +503,7 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
     if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
     else if (provider === "groq") result = await groqReply(messages, systemPrompt);
     else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
-    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v87", intent: conversationIntent };
+    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v74", intent: conversationIntent };
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources
@@ -737,47 +513,27 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
           .slice(0, 8)
       : [];
 
-    logChatEvent("info", "request_completed", { requestId, provider, status: 200, elapsedMs: Date.now() - startedAt });
-
     return NextResponse.json({
-      ok: true,
       content: truthfulnessQualityGate(maxIntelligenceQualityGate(postProcessNaturalResponse(result.content, latestUser, messages), latestUser, messages), latestUser, messages),
       provider,
       model: result.model,
-      intent: result.intent || platformIntent || conversationIntent || null,
+      intent: result.intent || knowledgeRoute.kind || platformIntent || conversationIntent || null,
+      knowledgeRoute: { kind: knowledgeRoute.kind, confidence: knowledgeRoute.confidence, contextLoaded: contextUseful },
       responseMode,
       fallbackUsed: !!result.fallbackUsed,
-      sourcesUsed: cleanSources,
-      attachments: attachments.length ? attachmentPublicMeta(attachments) : [],
-      requestId
+      sourcesUsed: cleanSources
     });
   } catch (error: any) {
-    if (error instanceof ChatRequestError) {
-      logChatEvent(error.status >= 500 ? "error" : "warn", "request_rejected", {
-        requestId,
-        status: error.status,
-        code: error.code,
-        elapsedMs: Date.now() - startedAt
-      });
-      return errorResponse(error.message, error.status, error.code, requestId, error.details);
-    }
-
     const raw = error?.message || "Erreur inconnue";
+    const status = Number(error?.status || 500);
     const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
-    const invalidJson = /JSON|Unexpected token|Unexpected end/i.test(raw);
-    const friendly = invalidJson
-      ? "RequÃªte chat invalide : le JSON envoyÃ© nâ€™est pas lisible."
-      : provider === "groq"
+    const friendly = provider === "groq"
       ? groqFriendlyError(raw)
       : raw.includes("model") && raw.includes("not found")
-      ? "Le modÃ¨le demandÃ© nâ€™est pas disponible. Je peux continuer avec un autre modÃ¨le installÃ© ou en mode dÃ©mo."
+      ? "Le modèle demandé n’est pas disponible. Je peux continuer avec un autre modèle installé ou en mode démo."
       : raw.includes("fetch failed")
-      ? "Je nâ€™arrive pas Ã  contacter le moteur IA local. VÃ©rifie quâ€™Ollama est lancÃ©, ou utilise le mode dÃ©mo en attendant."
-      : "Je nâ€™ai pas pu rÃ©pondre correctement cette fois. RÃ©essaie dans quelques secondes.";
-    const status = invalidJson ? 400 : 500;
-    const code = invalidJson ? "INVALID_JSON" : "CHAT_BACKEND_ERROR";
-    logChatEvent(status >= 500 ? "error" : "warn", "request_failed", { requestId, status, code, provider, elapsedMs: Date.now() - startedAt });
-    return errorResponse(friendly, status, code, requestId);
+      ? "Je n’arrive pas à contacter le moteur IA local. Vérifie qu’Ollama est lancé, ou utilise le mode démo en attendant."
+      : "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
+    return NextResponse.json(status < 500 ? jsonError(error) : { error: friendly, code: error?.code || "INTERNAL_ERROR", ok: false }, { status });
   }
 }
-

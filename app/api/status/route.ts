@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { routingSummary } from "../../../lib/model-router";
+import { knowledgeRouterSummary } from "../../../lib/knowledge-router";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 async function fetchOllamaModels() {
   const baseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
   try {
-    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Number(process.env.STATUS_OLLAMA_TIMEOUT_MS || 1200));
+    const res = await fetch(`${baseUrl}/api/tags`, { cache: "no-store", signal: controller.signal }).finally(() => clearTimeout(timer));
     if (!res.ok) return { available: false, models: [] as string[], error: `Ollama ${res.status}` };
     const data = await res.json();
     const models = (data?.models || []).map((m: any) => m.name).filter(Boolean);
@@ -24,8 +30,9 @@ export async function GET() {
       provider === "ollama" ? process.env.OLLAMA_MODEL || process.env.OLLAMA_MODEL_GENERAL || "qwen2.5:3b" :
       provider === "groq" ? process.env.GROQ_MODEL || "llama-3.1-8b-instant" :
       provider === "openrouter" ? process.env.OPENROUTER_MODEL || "openrouter/auto" :
-      "nimbray-demo-engine-v40",
+      "nimbray-demo-engine-v89-1",
     router: routingSummary(),
+    knowledgeRouter: knowledgeRouterSummary(),
     ollama,
     features: {
       v40ReleaseCandidate: true,
@@ -54,7 +61,9 @@ export async function GET() {
       docxParsing: process.env.ENABLE_DOCX_PARSE !== "false",
       adminPanel: process.env.ENABLE_ADMIN_PANEL !== "false",
       betaFeedback: process.env.ENABLE_BETA_FEEDBACK !== "false",
-      inviteMode: process.env.ENABLE_INVITE_MODE === "true"
+      inviteMode: process.env.ENABLE_INVITE_MODE === "true",
+      knowledgeRouterV89: true,
+      vercelHardeningV891: true
     }
   });
 }

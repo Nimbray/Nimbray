@@ -6,6 +6,8 @@ export type SourceSnippet = { title: string; content: string; type?: SourceType;
 
 type CacheEntry = { expiresAt: number; value: SourceSnippet | null };
 const PUBLIC_CACHE = new Map<string, CacheEntry>();
+let INTERNAL_KNOWLEDGE_CACHE: Array<{ title: string; content: string }> | null = null;
+let INTERNAL_KNOWLEDGE_CACHE_AT = 0;
 
 function normalize(text: string) {
   return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -76,19 +78,29 @@ function chunkText(content: string, chunkSize = Number(process.env.RAG_CHUNK_SIZ
 
 function readMarkdownFiles(dir: string): Array<{ title: string; content: string }> {
   if (!fs.existsSync(dir)) return [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const ttlMs = Number(process.env.INTERNAL_KNOWLEDGE_CACHE_TTL_MS || 1000 * 60 * 10);
+  if (INTERNAL_KNOWLEDGE_CACHE && Date.now() - INTERNAL_KNOWLEDGE_CACHE_AT < ttlMs) return INTERNAL_KNOWLEDGE_CACHE;
+
   const output: Array<{ title: string; content: string }> = [];
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) output.push(...readMarkdownFiles(fullPath));
-    else if (entry.isFile() && entry.name.endsWith(".md")) {
-      const relative = path.relative(path.join(process.cwd(), "knowledge"), fullPath).replace(/\\/g, "/");
-      output.push({ title: relative.replace(/\.md$/, ""), content: fs.readFileSync(fullPath, "utf8") });
+  const stack = [dir];
+  const maxFiles = Number(process.env.INTERNAL_KNOWLEDGE_MAX_FILES || 260);
+  while (stack.length && output.length < maxFiles) {
+    const current = stack.pop()!;
+    const entries = fs.readdirSync(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(current, entry.name);
+      if (entry.isDirectory()) stack.push(fullPath);
+      else if (entry.isFile() && entry.name.endsWith(".md")) {
+        const relative = path.relative(path.join(process.cwd(), "knowledge"), fullPath).replace(/\\/g, "/");
+        output.push({ title: relative.replace(/\.md$/, ""), content: fs.readFileSync(fullPath, "utf8") });
+        if (output.length >= maxFiles) break;
+      }
     }
   }
+  INTERNAL_KNOWLEDGE_CACHE = output;
+  INTERNAL_KNOWLEDGE_CACHE_AT = Date.now();
   return output;
 }
-
 function dedupeSources(items: SourceSnippet[]) {
   const seen = new Set<string>();
   const out: SourceSnippet[] = [];

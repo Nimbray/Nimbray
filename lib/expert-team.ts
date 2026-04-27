@@ -32,12 +32,7 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
     /\bversion\b/,
     /\bfrontend\b/,
     /\bbackend\b/,
-    /\bproduit\b/,
     /\bagent ia\b/,
-    /\bagents internes?\b/,
-    /\borchestration\b/,
-    /\bpersonnalite\b/,
-    /\brepetitions?\b/,
   ]);
 
   const teamRequest = hasAny(q, [
@@ -48,18 +43,13 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
     /\btravailler\b.*\bensemble/,
     /\bbosser fort\b/,
     /\bavancer enormement\b/,
-    /\brendre\b.*\breponses\b.*\bnaturelles?\b/,
-    /\breduire\b.*\brepetitions?\b/,
-    /\bameliore\b.*\bpersonnalite\b/,
-    /\bameliore\b.*\bmessages emotionnels\b/,
     /\btous les aspects\b/,
     /\bmode commando\b/,
     /\bsprint\b/,
     /\broadmap\b/,
     /\bameliore\b.*\bprojet\b/,
-    /\bbranche\b.*\bagent\b/,
-    /\bmission v\d+\b/,
-    /\bprepare\b.*\bpr\b/,
+    /\bremplace\b.*\bsource\b/,
+    /\bsource\b.*\bevoluer\b/,
     /\bderniere version\b/,
   ]);
 
@@ -68,53 +58,69 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
 
 export function expertTeamGuidance() {
   return `
-V87 Expert Team Orchestrator + Natural Product Brain :
+V84 Expert Team Orchestrator + GitHub Agent Automation :
 - Pour le projet NimbrayAI, raisonne comme une équipe senior coordonnée : Produit, IA, Backend, Frontend.
-- Produit protège la valeur utilisateur, la priorité et la clarté des prochaines étapes.
-- IA protège le naturel, la mémoire projet, la vérité, la sécurité, les réponses personnelles et l’anti-répétition.
-- Backend protège API, providers, uploads, erreurs, stockage, limites Vercel et contrat de réponse.
-- Frontend protège interface, mobile, feedback visuel, accessibilité, fichiers et qualité perçue.
-- Ne livre pas quatre avis isolés : fusionne en une décision, puis liste les tâches par rôle seulement quand cela aide.
-- Pour une mission agent, termine par fichiers modifiés, tests et PR vers main.
-- Priorité absolue : stabilité, utilité, simplicité, vitesse de livraison, compatibilité Vercel, CI vert, branche agent et handoff documenté.`;
+- Produit choisit ce qui augmente vraiment la valeur utilisateur maintenant.
+- IA améliore raisonnement, naturel, mémoire, vérité, sécurité et gestion des sources.
+- Backend stabilise API, providers, uploads, erreurs, stockage, limites Vercel et sécurité.
+- Frontend améliore interface, mobile, feedback visuel, accessibilité, fichiers et qualité perçue.
+- Ne livre pas quatre avis isolés : fusionne en une décision, un sprint, des tâches concrètes et des critères de test.
+- Pour une demande ambitieuse, produis : cap, chantier prioritaire, actions par rôle, risques, tests, prochaine version.
+- Priorité absolue : stabilité, utilité, simplicité, vitesse de livraison, compatibilité Vercel, ZIP léger, dernière version comme source officielle, conversations du projet synchronisées et espace de travail séparé par agent/conversation, index CURRENT_SOURCE.json, GitHub Actions, Pull Requests, CODEOWNERS et commandes agent:start/agent:merge-check.`;
 }
 
 export function expertTeamReply(latestUser: string, messages: MessageLike[] = []) {
   if (!detectExpertTeamRequest(latestUser, messages)) return null;
 
   return {
-    intent: "expert-team-orchestration-v87",
-    content: `On passe en **mode équipe V87** : une seule décision commune, puis des tâches nettes par rôle.
+    intent: "expert-team-orchestration",
+    content: `Oui. On passe en **mode équipe d’experts V84** : on ne fait plus seulement des petits patchs, on organise NimbrayAI comme un vrai produit qui progresse vite sans devenir fragile.
 
 **Décision commune**
-V87 doit rendre NimbrayAI plus naturel sans le rendre flou : moins de phrases automatiques, plus d’écoute dans les messages personnels, et des réponses projet qui disent clairement quoi faire ensuite.
+On avance en sprint court avec 4 rôles synchronisés : Produit décide la priorité, IA améliore le cerveau, Backend solidifie le moteur, Frontend rend l’expérience premium.
 
-**Sprint V87 — Natural Product Brain**
+**Synchronisation des conversations**
+Toutes les conversations du projet IA peuvent apporter des idées, mais elles ne remplacent jamais la source active. On récupère les bonnes décisions, puis on les réapplique sur le dernier ZIP officiel pour éviter les régressions.
 
-**Agent IA**
-- Renforcer la personnalité Nimbray : chaleureux, direct, vivant, non répétitif.
-- Mieux répondre aux messages personnels : solitude, doute, peur, honte, baisse d’énergie.
-- Supprimer les réflexes comme “je suis là pour t’aider”, “je reste disponible” et les relances inutiles.
+**Sprint V84 — GitHub multi-agents automatisé**
 
 **Agent Produit**
-- Garder la réponse orientée valeur : décision, priorité, prochaine étape.
-- Pour les chantiers, expliquer “maintenant / à tester / PR vers main”.
+- Transformer les idées en priorités : urgent, important, plus tard.
+- Garder le cap : NimbrayAI doit être simple, utile, humaine, rapide et crédible.
+- Éviter les fonctionnalités gadgets tant que le chat, l’upload, la mémoire et le cerveau ne sont pas solides.
+
+**Agent IA**
+- Renforcer les réponses projet : diagnostic, solution, test, prochaine action.
+- Réduire les réponses robotiques et répétitives.
+- Améliorer vérité, prudence, sources, mémoire et situations sensibles.
+- Faire parler les agents ensemble sans afficher un rapport inutilement long.
 
 **Agent Backend**
-- Ne pas casser le contrat de réponse de \`app/api/chat/route.ts\`.
-- Garder les erreurs propres et compatibles Vercel.
+- Sécuriser les routes API chat, parse-doc, status, sync et les erreurs provider.
+- Préparer une vraie architecture légère pour Vercel : local d’abord, Groq/OpenRouter/Ollama selon besoin.
+- Stabiliser upload image/document, limites de taille, retours propres, fallback démo.
+- Garder le ZIP léger : pas de dépendances lourdes inutiles.
 
 **Agent Frontend**
-- Préparer des réponses assez claires pour être lisibles dans le chat mobile.
-- Éviter les blocs trop longs quand l’utilisateur demande juste une réaction courte.
+- Améliorer l’expérience chat : pièces jointes visibles, états de chargement, erreurs claires, mobile propre.
+- Rendre le panneau Cerveau plus lisible avec les agents, capacités et tests.
+- Polir les micro-interactions pour que NimbrayAI paraisse plus premium.
 
-**Tests avant PR**
-- Micro-dialogues : “bonjour”, “merci”, “rien”, “arrête”, “parle”.
-- Personnel : “je me sens seul”, “je vais mal”, “je crois que je suis bi”.
-- Projet : Backend, Frontend, IA, Produit, prochaines étapes.
-- Checks : \`npm run source:check\`, \`npm run agent:merge-check\`, puis \`npm run build\` avec dépendances installées.
+**Risques à surveiller**
+- Ajouter trop de choses sans tests.
+- Faire grossir le cerveau au point de ralentir ou diluer les réponses.
+- Promettre une vision image complète alors que le serveur ne l’analyse pas encore.
+- Casser la compatibilité Vercel avec des modules trop lourds.
 
-**PR prévue**
-Branche : \`agent/ai/v87-natural-product-brain\` vers \`main\`, avec handoff IA et changelog à jour.`
+**Tests obligatoires avant livraison**
+1. Message simple : “bonjour”, “merci”, “rien”, “arrête”, “parle”.
+2. Message émotionnel : solitude, doute, orientation personnelle, détresse.
+3. Projet : “améliore notre IA”, “corrige ce bug”, “où on en est ?”.
+4. Upload image : sélection, aperçu, envoi, réponse honnête.
+5. Upload document : TXT, MD, PDF/DOCX si dépendances disponibles.
+6. Build : npm install puis npm run build.
+
+**Prochaine version logique**
+La V84 devient la version **GitHub Agent Automation** : elle conserve V83 Auto Source Sync, puis ajoute GitHub Actions, Pull Request template, CODEOWNERS, AGENT_CHANGELOG.json et les scripts agent:start, agent:handoff, agent:changelog et agent:merge-check.`
   };
 }
