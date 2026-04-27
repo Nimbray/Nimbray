@@ -30,31 +30,46 @@
       ]
     },
     {
-      "version": "85.0.0-proposed",
-      "agent": "ia",
-      "branch": "agent/ai/v84-v85-natural-orchestration",
+      "version": "85.0.0",
+      "agent": "produit",
+      "branch": "agent/product/v85-roadmap-v85-v90",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V85 Agent IA: réponses naturelles, anti-répétition, personnalité Nimbray et orchestration interne.",
+      "summary": "Cadrage Produit V85 à V90 : priorités, critères d’acceptation, upload, cerveau IA, UX chat et déploiement.",
       "files": [
-        "app/api/chat/route.ts",
-        "lib/response-polish.ts",
-        "lib/natural-intelligence.ts",
-        "lib/project-intelligence.ts",
-        "lib/expert-team.ts",
-        "lib/brain.ts",
-        "docs/V85_AGENT_IA_NATURAL_ORCHESTRATION.md",
-        "project-workspaces/03_agent-ia/HANDOFF_IA_V85_natural-orchestration.md",
-        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
+        "project-workspaces/02_agent-produit/ROADMAP.md",
+        "project-workspaces/02_agent-produit/NOTES.md",
+        "project-workspaces/02_agent-produit/HANDOFF_PRODUIT_V85_roadmap-v85-v90.md"
       ],
       "risks": [
-        "Installer les dépendances puis lancer npm run build avant merge.",
-        "Coordonner avec les branches Backend et Frontend sur app/api/chat/route.ts."
+        "Dépend des corrections Frontend Backend IA pour valider le parcours upload réel",
+        "Ne remplace pas la validation runtime ni les tests manuels"
       ],
       "tests": [
         "npm run source:check",
-        "npm run agent:merge-check",
-        "npm run build"
+        "npm run agent:merge-check"
+      ]
+    },
+    {
+      "version": "87.0.0",
+      "agent": "produit",
+      "branch": "agent/product/v87-beta-readiness",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "Cadrage Produit V87 beta readiness : définition de la première bêta utilisable, priorités P0/P1/P2, critères d’acceptation chat/upload/IA/mobile/déploiement, roadmap V87-V90 et risques testeurs.",
+      "files": [
+        "project-workspaces/02_agent-produit/BETA_READINESS_V87.md",
+        "project-workspaces/02_agent-produit/ROADMAP.md",
+        "project-workspaces/02_agent-produit/NOTES.md",
+        "project-workspaces/02_agent-produit/HANDOFF_PRODUIT_V87_beta-readiness.md"
+      ],
+      "risks": [
+        "Les critères Produit doivent être confirmés par les agents Frontend Backend IA avant ouverture réelle aux testeurs",
+        "Cette PR ne valide pas à elle seule le runtime upload/chat/mobile"
+      ],
+      "tests": [
+        "npm run source:check",
+        "npm run agent:merge-check"
       ]
     }
   ]
