@@ -16,6 +16,7 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
+import { buildV85StyleGuidance, polishNimbrayResponse } from "../../../lib/response-polish";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 type ChatAttachment = {
@@ -264,6 +265,10 @@ function unique(list: string[]) {
   return Array.from(new Set(list.filter(Boolean)));
 }
 
+function finalizeContent(content: string, latestUser: string, messages: ChatMessage[], options: { responseMode?: string; sourceRequested?: boolean; intent?: string | null } = {}) {
+  return polishNimbrayResponse(content, latestUser, messages, options);
+}
+
 async function chooseInstalledModel(baseUrl: string, desired: string) {
   const installed = await ollamaTags(baseUrl);
   if (!installed.length) return { model: desired, installed, fallbackUsed: false };
@@ -354,10 +359,7 @@ export async function POST(req: Request) {
     const hasOnlyUnprocessableAttachments = hasAttachmentSignal(latestUser, attachments) && !fileAttachments.some((item) => item.text) && (imageAttachments.length > 0 || hasLegacyImageSignal);
     if (hasOnlyUnprocessableAttachments) {
       return NextResponse.json({
-        ok: true,
-        content: imageAttachments.length > 1
-          ? `J’ai bien reçu les ${imageAttachments.length} images. Je peux les garder affichées dans la conversation, mais cette version serveur ne dispose pas encore d’un modèle vision pour les analyser directement. Décris-moi ce que tu veux vérifier sur les images, et je t’aide précisément à partir de ta description.`
-          : "J’ai bien reçu l’image. Je peux l’afficher dans la conversation, mais cette version serveur ne dispose pas encore d’un modèle vision pour l’analyser directement. Décris-moi ce que tu veux vérifier sur l’image, et je t’aide précisément à partir de ta description.",
+        content: finalizeContent("J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. Décris-moi ce que tu veux vérifier sur l’image, ou active plus tard un modèle vision pour que NimbrayAI puisse l’observer directement.", latestUser, messages, { responseMode, intent: "image-upload" }),
         provider: "nimbray-local",
         model: "v85-upload-api-real",
         intent: "attachment-upload",
@@ -377,7 +379,7 @@ export async function POST(req: Request) {
     const safety = assessSafetyWithContext(latestUser, messages);
     if (safety.shouldIntercept && safety.response) {
       return NextResponse.json({
-        content: safety.response,
+        content: finalizeContent(safety.response, latestUser, messages, { responseMode: "auto", intent: safety.category }),
         provider: "safety",
         model: "safe-human-brain",
         intent: safety.category,
@@ -390,7 +392,7 @@ export async function POST(req: Request) {
     const truthfulness = truthfulnessEmergencyReply(latestUser, messages);
     if (truthfulness) {
       return NextResponse.json({
-        content: truthfulness.content,
+        content: finalizeContent(truthfulness.content, latestUser, messages, { responseMode: "auto", intent: truthfulness.intent }),
         provider: "nimbray-local",
         model: "v75-1-truthfulness-emergency-fix",
         intent: truthfulness.intent,
@@ -405,7 +407,7 @@ export async function POST(req: Request) {
     const expertTeam = expertTeamReply(latestUser, messages);
     if (expertTeam) {
       return NextResponse.json({
-        content: expertTeam.content,
+        content: finalizeContent(expertTeam.content, latestUser, messages, { responseMode: "auto", intent: expertTeam.intent }),
         provider: "nimbray-local",
         model: "v82-collaborative-workspaces",
         intent: expertTeam.intent,
@@ -419,7 +421,7 @@ export async function POST(req: Request) {
     const gptSource = gptSourceIntelligenceReply(latestUser, messages);
     if (gptSource) {
       return NextResponse.json({
-        content: gptSource.content,
+        content: finalizeContent(gptSource.content, latestUser, messages, { responseMode: "auto", intent: gptSource.intent }),
         provider: "nimbray-local",
         model: "v76-gpt-source-intelligence",
         intent: gptSource.intent,
@@ -434,7 +436,7 @@ export async function POST(req: Request) {
     const projectReply = projectIntelligenceReply(latestUser, projectSnapshot);
     if (projectReply) {
       return NextResponse.json({
-        content: projectReply.content,
+        content: finalizeContent(projectReply.content, latestUser, messages, { responseMode: "auto", intent: projectReply.intent }),
         provider: "nimbray-local",
         model: "v72-memory-project-intelligence",
         intent: projectReply.intent,
@@ -448,7 +450,7 @@ export async function POST(req: Request) {
     const maxReply = maxIntelligenceReply(latestUser, messages);
     if (maxReply) {
       return NextResponse.json({
-        content: maxReply.content,
+        content: finalizeContent(maxReply.content, latestUser, messages, { responseMode: "auto", intent: maxReply.intent }),
         provider: "nimbray-local",
         model: "v74-max-intelligence-core",
         intent: maxReply.intent,
@@ -463,7 +465,7 @@ export async function POST(req: Request) {
     const natural = naturalIntelligenceReply(latestUser, messages);
     if (natural?.shouldIntercept) {
       return NextResponse.json({
-        content: natural.content,
+        content: finalizeContent(natural.content, latestUser, messages, { responseMode: "auto", intent: natural.intent }),
         provider: "nimbray-local",
         model: "v71-3-contextual-safety",
         intent: natural.intent,
@@ -478,7 +480,7 @@ export async function POST(req: Request) {
     const behavior = behaviorReply(latestUser);
     if (behavior) {
       return NextResponse.json({
-        content: behavior.content,
+        content: finalizeContent(behavior.content, latestUser, messages, { responseMode: "auto", intent: behavior.intent }),
         provider: "nimbray-local",
         model: "v71-3-natural-human-engine",
         intent: behavior.intent,
@@ -492,7 +494,7 @@ export async function POST(req: Request) {
     const quality = qualityReply(latestUser);
     if (quality) {
       return NextResponse.json({
-        content: quality.content,
+        content: finalizeContent(quality.content, latestUser, messages, { responseMode: "auto", intent: quality.intent }),
         provider: "nimbray-local",
         model: "v71-3-natural-quality-engine",
         intent: quality.intent,
@@ -508,7 +510,7 @@ export async function POST(req: Request) {
     const localBrain = localBrainReply(latestUser);
     if (localBrain) {
       return NextResponse.json({
-        content: localBrain.content,
+        content: finalizeContent(localBrain.content, latestUser, messages, { responseMode: "auto", intent: localBrain.intent }),
         provider: "nimbray-local",
         model: "v71-3-natural-local-brain",
         intent: localBrain.intent,
@@ -522,7 +524,7 @@ export async function POST(req: Request) {
     const localKnowledge = localLightKnowledgeReply(latestUser);
     if (isMicroDialogue(latestUser) || localPractical || localKnowledge) {
       return NextResponse.json({
-        content: localPractical || localKnowledge || localMicroReply(latestUser),
+        content: finalizeContent(localPractical || localKnowledge || localMicroReply(latestUser), latestUser, messages, { responseMode: "auto", intent: isMicroDialogue(latestUser) ? "micro-dialogue" : "local-practical" }),
         provider: "nimbray-local",
         model: "v71-3-natural-local-router",
         intent: isMicroDialogue(latestUser) ? "micro-dialogue" : "local-practical",
@@ -547,6 +549,7 @@ ${maxIntelligenceGuidance(maxProfile)}
 ${truthfulnessEmergencyGuidance()}
 ${gptSourceGuidance()}
 ${expertTeamGuidance()}
+${buildV85StyleGuidance()}
 ${safetyGuidanceForPrompt()}
 Sécurité détectée : ${safety.category}. ${safety.guidance}
 V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
@@ -568,8 +571,7 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
       : [];
 
     return NextResponse.json({
-      ok: true,
-      content: truthfulnessQualityGate(maxIntelligenceQualityGate(postProcessNaturalResponse(result.content, latestUser, messages), latestUser, messages), latestUser, messages),
+      content: finalizeContent(truthfulnessQualityGate(maxIntelligenceQualityGate(postProcessNaturalResponse(result.content, latestUser, messages), latestUser, messages), latestUser, messages), latestUser, messages, { responseMode, sourceRequested: showSources, intent: result.intent || platformIntent || conversationIntent }),
       provider,
       model: result.model,
       intent: result.intent || platformIntent || conversationIntent || null,

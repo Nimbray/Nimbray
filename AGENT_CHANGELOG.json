@@ -30,24 +30,31 @@
       ]
     },
     {
-      "version": "85.0.0",
-      "agent": "frontend",
-      "branch": "agent/frontend/v84-v85-chat-attachments",
+      "version": "85.0.0-proposed",
+      "agent": "ia",
+      "branch": "agent/ai/v84-v85-natural-orchestration",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "Improve chat attachment upload preview and states",
+      "summary": "V85 Agent IA: réponses naturelles, anti-répétition, personnalité Nimbray et orchestration interne.",
       "files": [
-        "app/page.tsx",
-        "app/globals.css",
-        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
-        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V85_chat-attachments.md"
+        "app/api/chat/route.ts",
+        "lib/response-polish.ts",
+        "lib/natural-intelligence.ts",
+        "lib/project-intelligence.ts",
+        "lib/expert-team.ts",
+        "lib/brain.ts",
+        "docs/V85_AGENT_IA_NATURAL_ORCHESTRATION.md",
+        "project-workspaces/03_agent-ia/HANDOFF_IA_V85_natural-orchestration.md",
+        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
       ],
       "risks": [
-        "Build not executed in zip environment because dependencies are missing",
-        "PR check requires real Git branch"
+        "Installer les dépendances puis lancer npm run build avant merge.",
+        "Coordonner avec les branches Backend et Frontend sur app/api/chat/route.ts."
       ],
       "tests": [
-        "npm run agent:merge-check"
+        "npm run source:check",
+        "npm run agent:merge-check",
+        "npm run build"
       ]
     }
   ]

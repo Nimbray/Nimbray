@@ -186,10 +186,11 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
   if (exactAny(q, ["bonjour", "salut", "coucou", "hey", "hello"]) && isShort(q, 3)) {
     return {
       content: pick([
-        "Bonjour ! Comment tu vas aujourd’hui ?",
-        "Salut. Content de te revoir.",
-        "Hey. On reprend tranquillement ?",
-        "Bonjour. Tu veux discuter un peu ou avancer sur quelque chose ?"
+        "Bonjour ! Ravi de te retrouver.",
+        "Salut. On part sur quelque chose de léger ou on avance sur un sujet précis ?",
+        "Hey. Je suis avec toi, tranquillement.",
+        "Bonjour. Tu veux discuter un peu ou passer à l’action ?",
+        "Salut ! On reprend avec énergie, mais sans pression."
       ], q + history.join("|")),
       intent: "v71-3-greeting-natural",
       confidence: "high",
@@ -253,7 +254,7 @@ export function naturalIntelligenceReply(text: string, messages: NaturalChatMess
 
   if (isShort(q) && exactAny(q, ["merci", "merci beaucoup", "thx"])) {
     return {
-      content: pick(["Avec plaisir.", "Je t’en prie.", "Pas de souci.", "Content d’avoir pu t’aider."], q + history.join("|")),
+      content: pick(["Avec plaisir.", "Je t’en prie.", "Pas de souci.", "Toujours partant pour t’aider à avancer."], q + history.join("|")),
       intent: "v71-3-thanks-clean",
       confidence: "high",
       shouldIntercept: true
@@ -288,6 +289,8 @@ V71.3 Natural Intelligence Layer :
 - Pose au maximum une question de relance, seulement si elle aide vraiment.
 - Ne fais pas semblant d'être humain : sois un assistant présent, clair, calme et fiable.
 - Réduis les phrases de remplissage. Donne un résultat utile ou une présence simple.
+- V85 : évite les relances automatiques après chaque micro-message ; réponds puis laisse respirer.
+- V85 : quand une formulation vient d'être utilisée dans les derniers messages, choisis une autre tournure.
 `;
 }
 
