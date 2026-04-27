@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
-import { apiError, assertRequestSize, jsonError } from "../../../lib/api-utils";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 type ParseResult = {
   ok: boolean;
@@ -59,28 +57,18 @@ async function parseDocx(buffer: Buffer) {
 export async function POST(req: Request) {
   try {
     if (process.env.ENABLE_DOCUMENT_PARSING === "false") {
-      throw apiError(400, "BAD_REQUEST", "Parsing de documents désactivé.");
-    }
-
-    assertRequestSize(req, Number(process.env.MAX_UPLOAD_FILE_MB || 12) * 1024 * 1024 + 1024 * 128);
-    const contentType = req.headers.get("content-type") || "";
-    if (!contentType.includes("multipart/form-data")) {
-      throw apiError(415, "UNSUPPORTED_MEDIA_TYPE", "Envoie le fichier en multipart/form-data.");
+      return NextResponse.json({ ok: false, error: "Parsing de documents désactivé." }, { status: 400 });
     }
 
     const form = await req.formData();
     const file = form.get("file");
     if (!file || !(file instanceof File)) {
-      throw apiError(400, "BAD_REQUEST", "Aucun fichier fourni.");
-    }
-
-    if (file.size <= 0) {
-      throw apiError(400, "BAD_REQUEST", "Fichier vide.");
+      return NextResponse.json({ ok: false, error: "Aucun fichier fourni." }, { status: 400 });
     }
 
     const maxMb = Number(process.env.MAX_UPLOAD_FILE_MB || 12);
     if (file.size > maxMb * 1024 * 1024) {
-      throw apiError(413, "PAYLOAD_TOO_LARGE", `Fichier trop lourd. Limite actuelle : ${maxMb} Mo.`);
+      return NextResponse.json({ ok: false, error: `Fichier trop lourd. Limite actuelle : ${maxMb} Mo.` }, { status: 413 });
     }
 
     const name = file.name || "document";
@@ -99,13 +87,12 @@ export async function POST(req: Request) {
     } else if (ext === "docx") {
       text = await parseDocx(buffer);
     } else {
-      throw apiError(415, "UNSUPPORTED_MEDIA_TYPE", `Format non supporté pour l’instant : .${ext}`);
+      return NextResponse.json({ ok: false, error: `Format non supporté pour l’instant : .${ext}` }, { status: 400 });
     }
 
     text = limitText(text);
     return NextResponse.json({ ok: true, name, type: ext, size: file.size, text, warning } satisfies ParseResult);
   } catch (error: any) {
-    const status = Number(error?.status || 500);
-    return NextResponse.json(jsonError(error), { status });
+    return NextResponse.json({ ok: false, error: error?.message || "Erreur de lecture du fichier." }, { status: 500 });
   }
 }

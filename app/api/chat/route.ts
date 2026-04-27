@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildSystemPrompt } from "../../../lib/brain";
 import { demoReply } from "../../../lib/demo-engine";
-import { buildContext } from "../../../lib/free-sources";
 import { detectIntent, desiredModelForIntent } from "../../../lib/model-router";
 import { detectConversationIntent, inferResponseMode, conversationGuidance, type ResponseMode } from "../../../lib/conversation-engine";
 import { assessSafetyWithContext, safetyGuidanceForPrompt } from "../../../lib/safety-router";
@@ -16,8 +15,8 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
-import { routeKnowledge, detectSourceRequest } from "../../../lib/knowledge-router";
-import { apiError, assertRequestSize, fetchJsonWithTimeout, jsonError, safeJsonParse } from "../../../lib/api-utils";
+import { routeProvider } from "../../../lib/provider-router";
+import { routeKnowledge, knowledgeRouterGuidance } from "../../../lib/knowledge-router";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
@@ -28,7 +27,7 @@ function norm(text: string) {
 }
 
 function wantsSources(text: string) {
-  return detectSourceRequest(text);
+  return /\b(avec sources?|source\??|sources\??|citation|cite|preuve|preuves|reference|references|référence|références|d ou tu sors|d’où tu sors)\b/i.test(text);
 }
 
 function isMicroDialogue(text: string) {
@@ -145,59 +144,13 @@ function groqFriendlyError(raw: string) {
 }
 
 
-const MAX_CHAT_REQUEST_BYTES = Number(process.env.CHAT_MAX_REQUEST_BYTES || 8 * 1024 * 1024);
-const PROVIDER_TIMEOUT_MS = Number(process.env.PROVIDER_TIMEOUT_MS || 24000);
-
-function sanitizeMessages(raw: unknown): ChatMessage[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((m) => m && typeof m === "object")
-    .map((m: any) => ({ role: m.role, content: String(m.content || "").slice(0, 6000) }))
-    .filter((m) => ["user", "assistant", "system"].includes(m.role) && m.content.trim())
-    .slice(-12) as ChatMessage[];
-}
-
-async function parseChatRequest(req: Request) {
-  assertRequestSize(req, MAX_CHAT_REQUEST_BYTES);
-  const contentType = req.headers.get("content-type") || "";
-
-  if (contentType.includes("multipart/form-data")) {
-    const form = await req.formData();
-    const rawMessages = form.get("messages");
-    const rawMessage = form.get("message") || form.get("prompt") || form.get("text");
-    const rawMemory = form.get("memory");
-    const rawKnowledge = form.get("userKnowledge");
-
-    let messages: ChatMessage[] = [];
-    if (typeof rawMessages === "string" && rawMessages.trim()) {
-      messages = sanitizeMessages(safeJsonParse<unknown>(rawMessages, [], "messages"));
-    } else if (typeof rawMessage === "string" && rawMessage.trim()) {
-      messages = [{ role: "user", content: rawMessage.trim().slice(0, 6000) }];
-    }
-
-    return {
-      messages,
-      memory: typeof rawMemory === "string" ? safeJsonParse<unknown[]>(rawMemory, [], "memory") : [],
-      userKnowledge: typeof rawKnowledge === "string" ? safeJsonParse<unknown[]>(rawKnowledge, [], "userKnowledge") : [],
-      responseMode: form.get("responseMode") || "auto",
-      projectContext: undefined
-    };
-  }
-
-  if (!contentType.includes("application/json") && contentType.trim()) {
-    throw apiError(415, "UNSUPPORTED_MEDIA_TYPE", "Format de requête non supporté. Utilise application/json ou multipart/form-data.");
-  }
-
-  try {
-    const body = await req.json();
-    return { ...body, messages: sanitizeMessages(body?.messages) };
-  } catch {
-    throw apiError(400, "INVALID_JSON", "JSON invalide ou corps de requête vide.");
-  }
-}
-
 async function callJson(url: string, init: RequestInit) {
-  return fetchJsonWithTimeout(url, init, PROVIDER_TIMEOUT_MS);
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Erreur ${response.status}`);
+  }
+  return response.json();
 }
 
 async function ollamaTags(baseUrl: string) {
@@ -284,14 +237,11 @@ async function openRouterReply(messages: ChatMessage[], systemPrompt: string): P
   return { content: data?.choices?.[0]?.message?.content || "Aucune réponse OpenRouter.", model };
 }
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
 export async function POST(req: Request) {
   try {
-    const body = await parseChatRequest(req);
-    const messages = sanitizeMessages(body?.messages || []);
-    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni.", code: "BAD_REQUEST", ok: false }, { status: 400 });
+    const body = await req.json();
+    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean);
+    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni." }, { status: 400 });
 
     const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
     const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
@@ -476,34 +426,38 @@ export async function POST(req: Request) {
     const conversationIntent = detectConversationIntent(latestUser);
     const compassMode = detectCompassMode(latestUser);
     const platformIntent = detectIntelligenceIntent(latestUser);
-    const knowledgeRoute = routeKnowledge({
-      latestUser,
+    const sourceRequested = wantsSources(latestUser);
+    const knowledge = await routeKnowledge({
+      query: latestUser,
+      userKnowledge,
       conversationIntent,
       platformIntent,
-      userKnowledgeCount: userKnowledge.length
+      sourceRequested
     });
-    const sourceRequested = knowledgeRoute.wantsSources || wantsSources(latestUser);
-    const contextUseful = knowledgeRoute.shouldBuildContext;
-    const { context, sources } = contextUseful ? await buildContext(latestUser, userKnowledge) : { context: "", sources: [] as any[] };
+    const { context, sources } = knowledge;
     const guidance = `${conversationGuidance(conversationIntent, responseMode)}
+${knowledgeRouterGuidance(knowledge)}
 ${naturalIntelligenceGuidance()}
 ${projectGuidance(projectSnapshot)}
 ${maxIntelligenceGuidance(maxProfile)}
 ${truthfulnessEmergencyGuidance()}
 ${gptSourceGuidance()}
 ${expertTeamGuidance()}
-${knowledgeRoute.guidance}
 ${safetyGuidanceForPrompt()}
 Sécurité détectée : ${safety.category}. ${safety.guidance}
 V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
     const systemPrompt = buildSystemPrompt(memory.slice(0, 5), context, guidance);
-    const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
-
-    let result: ProviderResult;
-    if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
-    else if (provider === "groq") result = await groqReply(messages, systemPrompt);
-    else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
-    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v74", intent: conversationIntent };
+    const result = await routeProvider({
+      messages,
+      systemPrompt,
+      latestUser,
+      memory,
+      userKnowledgeAvailable: userKnowledge.length > 0,
+      responseMode,
+      conversationIntent,
+      preferredProvider: body?.provider || process.env.AI_PROVIDER
+    });
+    const provider = result.provider;
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources
@@ -517,15 +471,16 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
       content: truthfulnessQualityGate(maxIntelligenceQualityGate(postProcessNaturalResponse(result.content, latestUser, messages), latestUser, messages), latestUser, messages),
       provider,
       model: result.model,
-      intent: result.intent || knowledgeRoute.kind || platformIntent || conversationIntent || null,
-      knowledgeRoute: { kind: knowledgeRoute.kind, confidence: knowledgeRoute.confidence, contextLoaded: contextUseful },
+      intent: result.intent || platformIntent || conversationIntent || null,
       responseMode,
       fallbackUsed: !!result.fallbackUsed,
+      fallbackChain: result.fallbackChain,
+      unavailableProviders: result.unavailableProviders,
+      knowledgeRoute: knowledge.route,
       sourcesUsed: cleanSources
     });
   } catch (error: any) {
     const raw = error?.message || "Erreur inconnue";
-    const status = Number(error?.status || 500);
     const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
     const friendly = provider === "groq"
       ? groqFriendlyError(raw)
@@ -534,6 +489,6 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
       : raw.includes("fetch failed")
       ? "Je n’arrive pas à contacter le moteur IA local. Vérifie qu’Ollama est lancé, ou utilise le mode démo en attendant."
       : "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
-    return NextResponse.json(status < 500 ? jsonError(error) : { error: friendly, code: error?.code || "INTERNAL_ERROR", ok: false }, { status });
+    return NextResponse.json({ error: friendly }, { status: 500 });
   }
 }

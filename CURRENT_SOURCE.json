@@ -1,12 +1,12 @@
 {
   "project": "NimbrayAI",
-  "activeVersion": "89.1.0",
-  "activeCodename": "V89.1 Vercel Hardening",
-  "activeArchive": "NimbrayAI_V89_1_Vercel_Hardening.zip",
+  "activeVersion": "84.0.0",
+  "activeCodename": "V84 GitHub Agent Automation",
+  "activeArchive": "NimbrayAI_V84_GitHub_Agent_Automation.zip",
   "sourceType": "github-ready-zip",
   "officialBranch": "main",
   "sourcePolicy": "GitHub main is the official living source. Every agent branches from main, documents work, opens a pull request, and only the integrator promotes an official version.",
-  "updatedAt": "2026-04-27",
+  "updatedAt": "2026-04-26",
   "requiredAgentStartCommand": "npm run agent:start -- --agent <frontend|backend|ia|produit>",
   "promotionCommand": "npm run source:promote -- --version <version> --zip <archive.zip> --notes \"<summary>\"",
   "agentWorkspaceCommand": "npm run source:agent -- --agent <frontend|backend|ia|produit|integrateur>",
@@ -24,14 +24,5 @@
     "Each pull request must pass GitHub Actions before merge.",
     "Only the integrator updates CURRENT_SOURCE.json for official promotion.",
     "Every agent must read AGENT_CHANGELOG.json before changing shared files."
-  ],
-  "lastHardening": {
-    "focus": [
-      "Vercel deployment",
-      "API stability",
-      "provider timeouts",
-      "knowledge cache"
-    ],
-    "branch": "agent/v89-1-vercel-hardening"
-  }
+  ]
 }

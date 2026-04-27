@@ -8,16 +8,28 @@ Améliorer le cerveau de NimbrayAI : naturel, raisonnement, vérité, sécurité
 
 Toute nouvelle règle de cerveau doit être courte, utile, testable et compatible avec les règles existantes.
 
-## V89 — Knowledge Router
+## V90 — Intelligent Project Brain
 
-- Création de `lib/knowledge-router.ts`.
-- Routes : `direct`, `local`, `user_knowledge`, `project`, `research`, `web_like`.
-- Le routeur décide si le contexte RAG doit être chargé via `shouldBuildContext`.
-- La guidance système mentionne la route, la confiance et la raison.
-- Objectif : éviter de charger des sources inutilement tout en renforçant les réponses documentaires/projet.
+### Changements livrés
 
-## V89.1 — Knowledge performance
+- Ajout d’un `Provider Router` dédié dans `lib/provider-router.ts`.
+- Routage intelligent entre `demo`, `Groq`, `Ollama` et `OpenRouter`, avec ordre de fallback déterministe.
+- Sélection renforcée d’Ollama pour les demandes projet/fichiers/locales, Groq pour les réponses cloud rapides, OpenRouter comme fallback optionnel, puis mode démo Vercel.
+- Ajout d’un `Knowledge Router` dans `lib/knowledge-router.ts`.
+- Routage knowledge entre fichiers utilisateur, mémoire projet locale, sources gratuites externes et mode hybride.
+- `/api/chat` utilise maintenant `routeProvider()` et `routeKnowledge()` au lieu de choisir directement un provider dans la route.
+- `/api/status` expose l’état du Provider Router et les flags V90.
+- Ajout de `/api/health` pour vérifier rapidement chat/status/parse-doc/provider router côté Vercel.
 
-- Cache warm des fichiers Markdown internes pour réduire le coût de construction du contexte.
-- Ajout de variables de contrôle pour limiter le nombre de fichiers de connaissance lus côté serveur.
-- Maintien du Knowledge Router V89, avec meilleure compatibilité Vercel serverless.
+### Principes V90
+
+- Ne jamais casser la réponse si un provider est absent : fallback propre vers le provider suivant.
+- Ne jamais exiger Groq ou Ollama pour que le site fonctionne : `demo` reste le dernier filet de sécurité.
+- Prioriser les fichiers utilisateur quand la question parle explicitement du document ou de l’upload.
+- Prioriser la mémoire projet locale quand la question concerne Nimbray, GitHub, Vercel, API, agents ou workspaces.
+- Garder les sources invisibles sauf demande explicite de l’utilisateur.
+
+### Tests effectués
+
+- `npm run typecheck`
+- `npm run build`
