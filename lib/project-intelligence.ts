@@ -53,7 +53,7 @@ function extractDecisionCandidates(messages: MessageLike[], memory: string[]) {
   const lines = joined.split(/\n|\. /g).map((x) => x.trim()).filter(Boolean);
   return unique(lines.filter((line) => {
     const q = normalize(line);
-    return /\b(decision|decide|on decide|on garde|on part sur|on passe|priorite|strategie|roadmap|version|deployer|deploiement|vercel|zip|safety|securite|silence|memoire|projet)\b/.test(q);
+    return /\b(decision|decide|on decide|on garde|on part sur|on passe|priorite|strategie|roadmap|version|deployer|deploiement|vercel|zip|safety|securite|silence|memoire|projet|backend|frontend|produit|agent ia|orchestration)\b/.test(q);
   }), 10);
 }
 
@@ -62,22 +62,28 @@ function extractNextActions(messages: MessageLike[], latestUser: string) {
   const q = normalize(text);
   const actions: string[] = [];
 
-  if (/v71\.3|contextual safety|adieu|securite contextuelle/.test(q)) {
-    actions.push("Valider que V71.3 répond bien aux signaux de danger contextuels, même après une demande de silence.");
+  if (/v87|natural product brain|personnalite|moins robotique|repetition|agent ia|messages emotionnels|orchestration/.test(q)) {
+    actions.push("Livrer V87 Agent IA : personnalité plus naturelle, réponses émotionnelles plus humaines, anti-répétition et prochaines étapes plus claires.");
   }
-  if (/v85|naturel|repetition|personnalite|orchestration|agent ia|agents internes/.test(q)) {
-    actions.push("Livrer V85 Agent IA : réponses plus naturelles, anti-répétition, personnalité Nimbray et orchestration interne plus claire.");
+  if (/backend|api|route|upload|provider|erreur|vercel/.test(q)) {
+    actions.push("Backend : garder les réponses d’erreur utiles, ne pas casser app/api/chat/route.ts et préserver la compatibilité Vercel.");
   }
-  if (/v72|memoire|memory|project intelligence|projet/.test(q)) {
-    actions.push("Préserver la mémoire projet, le suivi des décisions et les prochaines actions sans inventer d’historique.");
+  if (/frontend|interface|mobile|chat|preview|piece jointe|upload/.test(q)) {
+    actions.push("Frontend : traduire les états IA en expérience lisible côté chat, surtout mobile et pièces jointes.");
   }
-  if (/vercel|deploy|deployer|production/.test(q)) {
-    actions.push("Tester localement avec npm run build, puis déployer sur Vercel uniquement après validation des scénarios critiques.");
+  if (/produit|roadmap|mvp|priorite|utilisateur|valeur/.test(q)) {
+    actions.push("Produit : classer les demandes en urgent, important et plus tard pour éviter les fonctionnalités gadgets.");
+  }
+  if (/ia|cerveau|memoire|naturel|sources|securite/.test(q)) {
+    actions.push("IA : renforcer le style Nimbray, la prudence, le contexte projet et les réponses personnelles sans inventer de capacités.");
+  }
+  if (/pull request|pr|main|branche|ci|github actions|merge/.test(q)) {
+    actions.push("Préparer la PR depuis la branche agent, documenter le handoff, mettre à jour le changelog et lancer les checks disponibles.");
   }
   if (!actions.length) {
     actions.push("Résumer l’état du projet, identifier la décision la plus importante, puis proposer une prochaine action concrète.");
   }
-  return unique(actions, 6);
+  return unique(actions, 7);
 }
 
 function extractRisks(messages: MessageLike[]) {
@@ -86,11 +92,14 @@ function extractRisks(messages: MessageLike[]) {
   if (/ne reponds plus|silence|adieu|mourir|tuer|faire du mal/.test(recent)) {
     risks.push("Le silence ne doit jamais bloquer une réponse de sécurité ou de crise.");
   }
-  if (/deploiement|vercel|prod|production/.test(recent)) {
-    risks.push("Éviter les micro-déploiements non testés sur la production.");
+  if (/deploiement|vercel|prod|production|ci|build/.test(recent)) {
+    risks.push("Éviter les changements de prompt ou de route qui cassent le build, le CI ou Vercel.");
   }
-  if (/memoire|memory/.test(recent)) {
-    risks.push("La mémoire doit rester visible, contrôlable, modifiable et non intrusive.");
+  if (/repetition|robotique|personnalite/.test(recent)) {
+    risks.push("Trop polir le style peut rendre Nimbray fade ; garder une voix vivante mais sobre.");
+  }
+  if (/backend|frontend|app api chat|route/.test(recent)) {
+    risks.push("Coordonner les branches Backend et Frontend si elles touchent aussi app/api/chat/route.ts ou le contrat de réponse.");
   }
   return unique(risks, 5);
 }
@@ -113,53 +122,57 @@ export function buildProjectSnapshot(params: {
   return {
     projectName: projectContext.projectName || "NimbrayAI",
     currentVersion,
-    focus: projectContext.focus || "faire évoluer NimbrayAI comme une IA conversationnelle de production : sûre, naturelle, mémoire-projet, qualité et modes experts",
+    focus: projectContext.focus || "faire évoluer NimbrayAI comme une IA conversationnelle de production : sûre, naturelle, mémoire-projet, qualité, produit clair et agents internes coordonnés",
     decisions: decisions.length ? decisions : [
-      "Regrouper les changements en grosses versions cohérentes plutôt qu’en micro-patchs permanents.",
-      "La sécurité passe avant le silence, le mode choisi et les réponses locales.",
-      "Chaque version doit enrichir le cerveau interne de NimbrayAI."
+      "Regrouper les changements en versions cohérentes plutôt qu’en micro-patchs permanents.",
+      "La sécurité et l’honnêteté passent avant le style, le silence ou le mode choisi.",
+      "Chaque version doit enrichir le cerveau interne de NimbrayAI sans fragiliser le CI."
     ],
     nextActions,
-    risks: risks.length ? risks : ["Ne pas ajouter de fonctionnalités avancées avant de stabiliser le cœur conversationnel et la coordination multi-agents."],
+    risks: risks.length ? risks : ["Ne pas ajouter de personnalité au détriment de la fiabilité, de la sécurité et des tests CI."],
     confidence: decisions.length >= 3 ? "high" : decisions.length ? "medium" : "low"
   };
 }
 
 export function projectGuidance(snapshot: ProjectSnapshot) {
   return `
-V85 Project Context & Memory Intelligence :
+V87 Project Context & Product Brain :
 - Projet actif : ${snapshot.projectName}.
 - Version/focus détecté : ${snapshot.currentVersion} — ${snapshot.focus}.
 - Décisions utiles : ${snapshot.decisions.slice(0, 5).join(" ; ")}.
-- Prochaines actions probables : ${snapshot.nextActions.slice(0, 4).join(" ; ")}.
-- Risques à surveiller : ${snapshot.risks.slice(0, 3).join(" ; ")}.
+- Prochaines actions probables : ${snapshot.nextActions.slice(0, 5).join(" ; ")}.
+- Risques à surveiller : ${snapshot.risks.slice(0, 4).join(" ; ")}.
+- Si Backend, Frontend, IA ou Produit sont mentionnés, réponds comme un orchestrateur projet : décision commune, tâche par rôle seulement si utile, tests et PR.
 Quand l'utilisateur demande où en est le projet, la prochaine version, les décisions, les agents ou la roadmap, réponds comme un copilote projet : clair, structuré, concret, sans inventer de faux historique.`;
 }
 
 export function projectIntelligenceReply(latestUser: string, snapshot: ProjectSnapshot) {
   const q = normalize(latestUser);
-  const asksStatus = /\b(ou on en est|où on en est|etat du projet|point projet|resume le projet|resume projet|version actuelle|prochaine etape|prochaine version|roadmap|decisions prises|qu est ce qu on fait maintenant|sur quoi on bosse|continue le projet|agents internes|agent ia|handoff ia)\b/.test(q);
+  const asksStatus = /\b(ou on en est|où on en est|etat du projet|point projet|resume le projet|resume projet|version actuelle|prochaine etape|prochaine version|roadmap|decisions prises|qu est ce qu on fait maintenant|sur quoi on bosse|continue le projet|agents internes|agent ia|handoff ia|backend|frontend|produit)\b/.test(q);
   if (!asksStatus) return null;
 
   const decisions = snapshot.decisions.slice(0, 5).map((d) => `- ${d}`).join("\n");
-  const actions = snapshot.nextActions.slice(0, 5).map((a) => `- ${a}`).join("\n");
+  const actions = snapshot.nextActions.slice(0, 6).map((a) => `- ${a}`).join("\n");
   const risks = snapshot.risks.slice(0, 4).map((r) => `- ${r}`).join("\n");
 
   return {
-    intent: "project-intelligence",
+    intent: "project-intelligence-v87",
     content: `On est sur **${snapshot.projectName} ${snapshot.currentVersion}**.
 
 Le cap actuel : ${snapshot.focus}.
 
+**Décision commune**
+On garde NimbrayAI simple, fiable et humain : Produit priorise, IA rend les réponses naturelles, Backend protège la robustesse, Frontend rend l’expérience claire.
+
 **Décisions importantes retenues**
 ${decisions}
 
-**Prochaines actions recommandées**
+**Prochaines étapes**
 ${actions}
 
 **Points de vigilance**
 ${risks}
 
-Ma recommandation : on avance par grosse version stable, on teste les scénarios critiques, puis on déploie seulement quand le saut de qualité est clair.`
+Ma recommandation : on livre par branche agent, on documente le handoff, on lance les checks disponibles, puis on ouvre la PR vers \`main\` quand le saut de qualité est clair.`
   };
 }

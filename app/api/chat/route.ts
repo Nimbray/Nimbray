@@ -16,25 +16,9 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
-import { buildV85StyleGuidance, polishNimbrayResponse } from "../../../lib/response-polish";
+import { buildV87StyleGuidance, polishNimbrayResponse } from "../../../lib/response-polish";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
-type ChatAttachment = {
-  name: string;
-  type: string;
-  size: number;
-  kind: "image" | "document" | "file";
-  text?: string;
-};
-
-type ChatPayload = {
-  messages?: unknown;
-  memory?: unknown;
-  userKnowledge?: unknown;
-  responseMode?: unknown;
-  projectContext?: unknown;
-  attachments?: unknown;
-};
 
 type ProviderResult = { content: string; model: string; intent?: string; fallbackUsed?: boolean; sources?: string[] };
 
@@ -153,93 +137,12 @@ ${tail}`;
 
 function groqFriendlyError(raw: string) {
   if (/rate_limit|Rate limit|Request too large|tokens per minute|TPM/i.test(raw)) {
-    return "Je suis un peu ralenti là. Réessaie dans quelques secondes, ou envoie une question plus courte. Je reste disponible.";
+    return "Je suis un peu ralenti là. Réessaie dans quelques secondes, ou envoie une question plus courte.";
   }
   if (/GROQ_API_KEY/i.test(raw)) return "Groq n’est pas encore configuré. Le site peut continuer en mode démo, mais la vraie IA publique demande une clé Groq dans Vercel.";
   return "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
 }
 
-
-
-function errorResponse(message: string, status = 400, code = "BAD_REQUEST", details?: Record<string, unknown>) {
-  return NextResponse.json({ ok: false, error: message, code, details }, { status });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-function safeString(value: unknown, max = 24000) {
-  return String(value || "").replace(/\u0000/g, "").slice(0, max);
-}
-
-function normalizeMessages(input: unknown): ChatMessage[] {
-  if (!Array.isArray(input)) return [];
-  return input
-    .map((item) => {
-      if (!isRecord(item)) return null;
-      const role = item.role === "assistant" || item.role === "system" ? item.role : item.role === "user" ? "user" : null;
-      const content = safeString(item.content, 32000).trim();
-      return role && content ? ({ role, content } as ChatMessage) : null;
-    })
-    .filter(Boolean) as ChatMessage[];
-}
-
-function normalizeAttachments(input: unknown): ChatAttachment[] {
-  if (!Array.isArray(input)) return [];
-  const maxAttachments = Number(process.env.MAX_CHAT_ATTACHMENTS || 6);
-  return input.slice(0, maxAttachments).map((item) => {
-    if (!isRecord(item)) return null;
-    const name = safeString(item.name || "fichier", 180) || "fichier";
-    const type = safeString(item.type || "application/octet-stream", 120) || "application/octet-stream";
-    const size = Number(item.size || 0);
-    const inferredKind = type.startsWith("image/") ? "image" : item.text ? "document" : "file";
-    const kind = item.kind === "image" || item.kind === "document" || item.kind === "file" ? item.kind : inferredKind;
-    const text = typeof item.text === "string" ? safeString(item.text, Number(process.env.MAX_ATTACHMENT_TEXT_CHARS || 20000)).trim() : undefined;
-    return { name, type, size: Number.isFinite(size) ? size : 0, kind, text };
-  }).filter(Boolean) as ChatAttachment[];
-}
-
-async function readChatBody(req: Request): Promise<ChatPayload> {
-  const contentType = req.headers.get("content-type") || "";
-
-  if (contentType.includes("multipart/form-data")) {
-    const form = await req.formData();
-    const payloadRaw = form.get("payload");
-    const payload = typeof payloadRaw === "string" && payloadRaw.trim() ? JSON.parse(payloadRaw) : {};
-    const formAttachments: ChatAttachment[] = [];
-
-    for (const value of form.getAll("files")) {
-      if (!(value instanceof File)) continue;
-      const maxMb = value.type.startsWith("image/") ? Number(process.env.MAX_CHAT_IMAGE_MB || 8) : Number(process.env.MAX_UPLOAD_FILE_MB || 12);
-      if (value.size > maxMb * 1024 * 1024) throw new Error(`UPLOAD_TOO_LARGE:${value.name || "fichier"}:${maxMb}`);
-      formAttachments.push({
-        name: value.name || "fichier",
-        type: value.type || "application/octet-stream",
-        size: value.size,
-        kind: value.type.startsWith("image/") ? "image" : "file"
-      });
-    }
-
-    return { ...(isRecord(payload) ? payload : {}), attachments: [...normalizeAttachments(isRecord(payload) ? payload.attachments : undefined), ...formAttachments] };
-  }
-
-  if (!contentType || contentType.includes("application/json")) return await req.json();
-  throw new Error("UNSUPPORTED_CONTENT_TYPE");
-}
-
-function attachmentGuidance(attachments: ChatAttachment[]) {
-  if (!attachments.length) return "";
-  const images = attachments.filter((item) => item.kind === "image");
-  const docs = attachments.filter((item) => item.kind !== "image");
-  const summary = attachments.map((item) => `${item.name} (${item.type || "type inconnu"}, ${Math.max(1, Math.round((item.size || 0) / 1024))} Ko)`).join(" ; ");
-  const docText = docs.filter((item) => item.text).map((item) => `\n\n[Extrait de ${item.name}]\n${item.text}`).join("");
-  return `\n\n[Pièces jointes reçues : ${summary}. ${images.length ? "Images présentes : confirme la réception, reste honnête si aucun modèle vision n’est configuré, et demande une description utile si nécessaire." : ""} ${docs.length ? "Documents présents : utilise les extraits texte disponibles sans inventer le contenu manquant." : ""}]${docText}`;
-}
-
-function hasAttachmentSignal(text: string, attachments: ChatAttachment[]) {
-  return attachments.length > 0 || /\[(Images?|Fichiers?|Pièces jointes?) jointes? par l[’']utilisateur/i.test(text);
-}
 
 async function callJson(url: string, init: RequestInit) {
   const response = await fetch(url, init);
@@ -340,33 +243,24 @@ async function openRouterReply(messages: ChatMessage[], systemPrompt: string): P
 
 export async function POST(req: Request) {
   try {
-    const body = await readChatBody(req);
-    if (!isRecord(body)) return errorResponse("Requête chat invalide.", 400, "INVALID_BODY");
+    const body = await req.json();
+    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean);
+    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni." }, { status: 400 });
 
-    const attachments = normalizeAttachments(body.attachments);
-    const messages = normalizeMessages(body.messages);
-    if (!messages.length) return errorResponse("Aucun message fourni.", 400, "NO_MESSAGES");
-
-    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
-    const userKnowledge = Array.isArray(body.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
-    const latestUserMessage = [...messages].reverse().find((m) => m.role === "user");
-    const latestUser = `${latestUserMessage?.content || ""}${attachmentGuidance(attachments)}`.trim();
-    if (latestUserMessage) latestUserMessage.content = latestUser;
-    const responseMode = inferResponseMode(latestUser, (body.responseMode || "auto") as ResponseMode);
-    const imageAttachments = attachments.filter((item) => item.kind === "image");
-    const fileAttachments = attachments.filter((item) => item.kind !== "image");
-    const hasLegacyImageSignal = /\[Images jointes par l’utilisateur/i.test(latestUser);
-    const hasOnlyUnprocessableAttachments = hasAttachmentSignal(latestUser, attachments) && !fileAttachments.some((item) => item.text) && (imageAttachments.length > 0 || hasLegacyImageSignal);
-    if (hasOnlyUnprocessableAttachments) {
+    const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
+    const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
+    const latestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const responseMode = inferResponseMode(latestUser, (body?.responseMode || "auto") as ResponseMode);
+    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
+    if (hasImageAttachment) {
       return NextResponse.json({
         content: finalizeContent("J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. Décris-moi ce que tu veux vérifier sur l’image, ou active plus tard un modèle vision pour que NimbrayAI puisse l’observer directement.", latestUser, messages, { responseMode, intent: "image-upload" }),
         provider: "nimbray-local",
-        model: "v85-upload-api-real",
-        intent: "attachment-upload",
+        model: "v77-image-upload-stability",
+        intent: "image-upload",
         responseMode,
         fallbackUsed: false,
-        sourcesUsed: [],
-        attachments: attachments.map(({ name, type, size, kind }) => ({ name, type, size, kind }))
+        sourcesUsed: []
       });
     }
     const maxProfile = analyzeMaxIntelligence(latestUser, messages);
@@ -374,7 +268,7 @@ export async function POST(req: Request) {
       latestUser,
       messages,
       memory,
-      projectContext: body.projectContext || { projectName: "NimbrayAI", focus: "évolution IA conversationnelle, sécurité, mémoire projet et qualité" }
+      projectContext: body?.projectContext || { projectName: "NimbrayAI", focus: "évolution IA conversationnelle, sécurité, mémoire projet et qualité" }
     });
     const safety = assessSafetyWithContext(latestUser, messages);
     if (safety.shouldIntercept && safety.response) {
@@ -409,7 +303,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         content: finalizeContent(expertTeam.content, latestUser, messages, { responseMode: "auto", intent: expertTeam.intent }),
         provider: "nimbray-local",
-        model: "v82-collaborative-workspaces",
+        model: "v87-natural-product-brain",
         intent: expertTeam.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -438,7 +332,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         content: finalizeContent(projectReply.content, latestUser, messages, { responseMode: "auto", intent: projectReply.intent }),
         provider: "nimbray-local",
-        model: "v72-memory-project-intelligence",
+        model: "v87-project-intelligence",
         intent: projectReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -549,7 +443,7 @@ ${maxIntelligenceGuidance(maxProfile)}
 ${truthfulnessEmergencyGuidance()}
 ${gptSourceGuidance()}
 ${expertTeamGuidance()}
-${buildV85StyleGuidance()}
+${buildV87StyleGuidance()}
 ${safetyGuidanceForPrompt()}
 Sécurité détectée : ${safety.category}. ${safety.guidance}
 V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
@@ -560,7 +454,7 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
     if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
     else if (provider === "groq") result = await groqReply(messages, systemPrompt);
     else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
-    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v74", intent: conversationIntent };
+    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v87", intent: conversationIntent };
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources
@@ -577,27 +471,18 @@ V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelli
       intent: result.intent || platformIntent || conversationIntent || null,
       responseMode,
       fallbackUsed: !!result.fallbackUsed,
-      sourcesUsed: cleanSources,
-      attachments: attachments.length ? attachments.map(({ name, type, size, kind }) => ({ name, type, size, kind })) : []
+      sourcesUsed: cleanSources
     });
   } catch (error: any) {
     const raw = error?.message || "Erreur inconnue";
     const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
-    const uploadTooLarge = raw.match(/^UPLOAD_TOO_LARGE:(.*):(\d+(?:\.\d+)?)$/);
-    const friendly = uploadTooLarge
-      ? `Fichier trop lourd : ${uploadTooLarge[1]}. Limite actuelle : ${uploadTooLarge[2]} Mo.`
-      : raw === "UNSUPPORTED_CONTENT_TYPE"
-      ? "Format de requête non supporté. Envoie du JSON ou un formulaire multipart."
-      : /JSON|Unexpected token|Unexpected end/i.test(raw)
-      ? "Requête chat invalide : le JSON envoyé n’est pas lisible."
-      : provider === "groq"
+    const friendly = provider === "groq"
       ? groqFriendlyError(raw)
       : raw.includes("model") && raw.includes("not found")
       ? "Le modèle demandé n’est pas disponible. Je peux continuer avec un autre modèle installé ou en mode démo."
       : raw.includes("fetch failed")
       ? "Je n’arrive pas à contacter le moteur IA local. Vérifie qu’Ollama est lancé, ou utilise le mode démo en attendant."
       : "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
-    const status = uploadTooLarge ? 413 : raw === "UNSUPPORTED_CONTENT_TYPE" ? 415 : /JSON|Unexpected token|Unexpected end/i.test(raw) ? 400 : 500;
-    return NextResponse.json({ ok: false, error: friendly, code: uploadTooLarge ? "UPLOAD_TOO_LARGE" : status === 415 ? "UNSUPPORTED_CONTENT_TYPE" : status === 400 ? "INVALID_JSON" : "CHAT_BACKEND_ERROR" }, { status });
+    return NextResponse.json({ error: friendly }, { status: 500 });
   }
 }
