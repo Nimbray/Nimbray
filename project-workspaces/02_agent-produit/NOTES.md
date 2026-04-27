@@ -43,3 +43,22 @@ La V85 doit être une version de stabilisation produit, centrée sur le parcours
 - `ROADMAP.md` réécrit en roadmap V85 à V90.
 - Handoff Produit V85 créé et complété.
 - `AGENT_CHANGELOG.json` doit mentionner la contribution produit proposée.
+
+---
+
+## Notes Produit — V87 Beta Readiness
+
+- Date : 2026-04-27
+- Branche : `agent/product/v87-beta-readiness`
+- Mission : définir les conditions d’une première bêta utilisable.
+
+### Synthèse
+
+La V87 doit ouvrir NimbrayAI à un petit groupe de testeurs uniquement si les parcours P0 sont fiables : chat, upload, IA honnête, mobile, déploiement et feedback. Les fonctionnalités plus ambitieuses restent planifiées V88-V90 pour éviter une bêta instable.
+
+### Décision de périmètre
+
+- Bêta privée contrôlée : oui.
+- Ouverture publique large : non.
+- Mémoire cloud/RAG avancé/actions autonomes : hors P0 V87.
+- Documentation Produit : ajoutée dans `BETA_READINESS_V87.md`.
