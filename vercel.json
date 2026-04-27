@@ -1,3 +1,0 @@
-﻿{
-  "buildCommand": "npm run deploy:check && npm run build"
-}
