@@ -30,85 +30,74 @@
       ]
     },
     {
-      "version": "84.0.0",
-      "agent": "backend",
-      "branch": "agent/backend/v85-upload-api-real",
+      "version": "85.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v84-v85-chat-attachments",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V85 réelle : solidification de /api/chat pour messages avec pièces jointes, parsing JSON/multipart et erreurs client lisibles.",
+      "summary": "Improve chat attachment upload preview and states",
       "files": [
-        "app/api/chat/route.ts",
-        "package.json",
-        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V85_upload-api-real.md",
-        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V85_chat-attachments.md"
       ],
       "risks": [
-        "Le frontend doit encore envoyer un champ attachments structuré pour exploiter totalement le nouveau chemin backend.",
-        "Le build Next local reste bloqué longtemps sur Creating an optimized production build dans cette archive."
+        "Build not executed in zip environment because dependencies are missing",
+        "PR check requires real Git branch"
       ],
       "tests": [
-        "npm run source:check",
-        "npm run agent:merge-check",
-        "npm run lint",
-        "npm run typecheck"
+        "npm run agent:merge-check"
       ]
     },
     {
-      "version": "84.0.0",
-      "agent": "backend",
-      "branch": "agent/backend/v86-vercel-upload-validation",
+      "version": "86.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v86-upload-e2e-ui",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V86 : validation réelle de /api/chat après V85, tests JSON/multipart/image/fichier/limites et amélioration des erreurs upload.",
+      "summary": "Solidify end-to-end chat upload UI for images and documents",
       "files": [
-        "app/api/chat/route.ts",
-        "AGENT_CHANGELOG.json",
-        "project-workspaces/04_agent-backend/BACKEND_V86_TEST_REPORT.md",
-        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V86_vercel-upload-validation.md",
-        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V86_upload-e2e-ui.md",
+        "project-workspaces/05_agent-frontend/PR_FRONTEND_V86_UPLOAD_E2E_UI.md"
       ],
       "risks": [
-        "Les images sont reçues et tracées comme pièces jointes, mais l'analyse vision réelle reste volontairement non promise sans modèle vision branché.",
-        "Le fichier uploadé dans multipart est validé par métadonnées ; l'extraction texte serveur complète reste une évolution séparée."
+        "Build not executed fully in zip environment because dependencies are missing",
+        "Real browser E2E must be rerun in the GitHub repo with installed dependencies",
+        "Images remain frontend context; server-side vision is not implemented in this PR"
       ],
       "tests": [
-        "Next dev /api/chat smoke test : JSON texte seul => 200",
-        "Next dev /api/chat smoke test : multipart image => 200 avec attachment meta",
-        "Next dev /api/chat smoke test : multipart fichier => 200 avec attachment meta",
-        "Next dev /api/chat smoke test : content-type non supporté => 415 UNSUPPORTED_CONTENT_TYPE",
-        "Next dev /api/chat smoke test : trop de pièces jointes => 413 TOO_MANY_ATTACHMENTS",
-        "Next dev /api/chat smoke test : fichier trop lourd => 413 UPLOAD_TOO_LARGE",
+        "node scripts/source-manager.js check",
         "node scripts/agent-merge-check.js",
-        "npm run lint",
-        "tsc --noEmit --pretty false --incremental false"
+        "npm run build attempted: next not found"
       ]
     },
     {
-      "version": "84.0.0",
-      "agent": "backend",
-      "branch": "agent/backend/v87-observability-api",
+      "version": "87.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v87-premium-chat-ux",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V87 : observabilité propre de /api/chat, structure d’erreur stable, requestId et validation renforcée des cas limites upload.",
+      "summary": "Polish premium chat UX while preserving V86 attachment upload flow",
       "files": [
-        "app/api/chat/route.ts",
-        "AGENT_CHANGELOG.json",
-        "project-workspaces/04_agent-backend/BACKEND_V87_API_SCENARIOS.md",
-        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V87_observability-api.md",
-        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V87_premium-chat-ux.md",
+        "project-workspaces/05_agent-frontend/PR_FRONTEND_V87_PREMIUM_CHAT_UX.md"
       ],
       "risks": [
-        "Les images sont toujours reçues mais non analysées sans modèle vision configuré.",
-        "La liste MIME autorisée peut nécessiter des ajouts si le frontend transmet des types plus spécifiques.",
-        "Le typecheck local reste bloqué dans cette archive ; à confirmer via GitHub Actions."
+        "Build not executed fully in zip environment because dependencies are missing",
+        "Real browser desktop/mobile upload checks must be rerun in the GitHub repo",
+        "Drag-and-drop depends on standard browser DataTransfer.files support"
       ],
       "tests": [
-        "Audit app/api/chat/route.ts",
-        "Vérification statique codes erreurs : EMPTY_FILE, UNSUPPORTED_FILE_TYPE, MULTIPART_PAYLOAD_INVALID, UPLOAD_TOO_LARGE, UPLOAD_TOTAL_TOO_LARGE",
-        "npm run source:check",
+        "node scripts/source-manager.js check",
         "node scripts/agent-merge-check.js",
-        "npm run lint : sortie no-op observée",
-        "npm run typecheck : lancé mais timeout local sans erreur affichée"
+        "npm run build not executed: next not installed in zip environment"
       ]
     }
   ]

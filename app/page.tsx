@@ -5,9 +5,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type SourceRef = { title: string; type?: string; url?: string };
 type AttachmentImage = { id: string; name: string; type: string; size: number; dataUrl: string };
-type UploadState = "processing" | "ready" | "sending" | "error";
+type AttachmentDocument = { id: string; name: string; type: string; size: number; content: string };
+type AttachmentSummary = { id: string; name: string; type: string; size: number; kind: "image" | "document" };
+type UploadState = "processing" | "ready" | "sending" | "sent" | "error";
 type AttachmentNote = { id: string; name: string; ok: boolean; message: string; state: UploadState; kind: "image" | "document" };
-type Message = { role: "user" | "assistant"; content: string; provider?: string; model?: string; fallbackUsed?: boolean; sourcesUsed?: SourceRef[]; images?: AttachmentImage[] };
+type Message = { role: "user" | "assistant"; content: string; provider?: string; model?: string; fallbackUsed?: boolean; sourcesUsed?: SourceRef[]; images?: AttachmentImage[]; attachments?: AttachmentSummary[] };
 type Thread = { id: string; title: string; messages: Message[]; createdAt: number };
 type KnowledgeItem = { id: string; name: string; content: string; createdAt: number; size: number };
 type Status = { provider: string; model: string; router?: Record<string, string>; ollama?: { available: boolean; models: string[]; error?: string }; features?: Record<string, boolean> };
@@ -45,6 +47,27 @@ function threadsForStorage(list: Thread[]) {
 
 function makeWorkspaceId() {
   return `nim_${crypto.randomUUID().replace(/-/g, "").slice(0, 20)}`;
+}
+
+function formatFileSize(size: number) {
+  if (!Number.isFinite(size) || size <= 0) return "1 Ko";
+  if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(size >= 10 * 1024 * 1024 ? 0 : 1)} Mo`;
+  return `${Math.max(1, Math.round(size / 1024))} Ko`;
+}
+
+function attachmentStateLabel(state: UploadState) {
+  if (state === "processing") return "Préparation";
+  if (state === "ready") return "Prêt à envoyer";
+  if (state === "sending") return "Envoi en cours";
+  if (state === "sent") return "Envoyé";
+  return "Erreur";
+}
+
+function attachmentStateIcon(note: AttachmentNote) {
+  if (note.state === "processing") return "…";
+  if (note.state === "error") return "!";
+  if (note.state === "sent") return "✓";
+  return note.kind === "image" ? "IMG" : "DOC";
 }
 
 function extractMemoryDirective(text: string) {
@@ -159,8 +182,11 @@ export default function HomePage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [parseNotes, setParseNotes] = useState<AttachmentNote[]>([]);
   const [pendingImages, setPendingImages] = useState<AttachmentImage[]>([]);
+  const [pendingDocuments, setPendingDocuments] = useState<AttachmentDocument[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState(false);
-  const pendingAttachmentCount = pendingImages.length + parseNotes.filter((note) => note.state === "ready").length;
+  const [draggingFiles, setDraggingFiles] = useState(false);
+  const failedNoteCount = parseNotes.filter((note) => note.state === "error").length;
+  const pendingAttachmentCount = pendingImages.length + pendingDocuments.length;
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -318,7 +344,13 @@ export default function HomePage() {
     });
   }
 
-  async function readFiles(files: FileList | null) {
+  function removePendingAttachment(id: string) {
+    setPendingImages((prev) => prev.filter((item) => item.id !== id));
+    setPendingDocuments((prev) => prev.filter((item) => item.id !== id));
+    setParseNotes((prev) => prev.filter((note) => note.id !== id));
+  }
+
+  async function readFiles(files: FileList | File[] | null) {
     if (!files?.length) return;
     const selectedFiles = Array.from(files);
     const processingNotes: AttachmentNote[] = selectedFiles.map((file) => ({
@@ -333,7 +365,7 @@ export default function HomePage() {
     setUploadingFiles(true);
     setParseNotes((prev) => [...processingNotes, ...prev].slice(0, 30));
 
-    const items: KnowledgeItem[] = [];
+    const documents: AttachmentDocument[] = [];
     const images: AttachmentImage[] = [];
     const completedNotes: AttachmentNote[] = [];
 
@@ -344,8 +376,8 @@ export default function HomePage() {
         if (file.type.startsWith("image/")) {
           const maxImageMb = 8;
           if (file.size > maxImageMb * 1024 * 1024) throw new Error(`Image trop lourde. Limite actuelle : ${maxImageMb} Mo.`);
-          images.push({ id: crypto.randomUUID(), name: file.name || "image", type: file.type || "image", size: file.size, dataUrl: await imageFileToDataUrl(file) });
-          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prête à être envoyée dans la conversation." });
+          images.push({ id: noteBase.id, name: file.name || "image", type: file.type || "image", size: file.size, dataUrl: await imageFileToDataUrl(file) });
+          completedNotes.push({ ...noteBase, ok: true, state: "ready", message: "Image prête. Tu peux l’envoyer ou la retirer." });
           continue;
         }
 
@@ -356,14 +388,14 @@ export default function HomePage() {
         if (!response.ok || !data?.ok) throw new Error(data?.error || "Lecture impossible");
         const text = String(data.text || "").trim();
         if (!text) throw new Error("Aucun texte exploitable trouvé.");
-        items.push({ id: crypto.randomUUID(), name: data.name || file.name, content: text, size: data.size || file.size, createdAt: Date.now() });
-        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prêt : source ajoutée au cerveau local." });
+        documents.push({ id: noteBase.id, name: data.name || file.name, type: file.type || "document", content: text, size: data.size || file.size });
+        completedNotes.push({ ...noteBase, ok: true, state: "ready", message: data.warning || "Document prêt. Tu peux l’envoyer, le retirer ou ajouter un message." });
       } catch (error: any) {
         completedNotes.push({ ...noteBase, ok: false, state: "error", message: error?.message || "Lecture impossible." });
       }
     }
 
-    if (items.length) setKnowledge((prev) => [...items, ...prev].slice(0, 120));
+    if (documents.length) setPendingDocuments((prev) => [...prev, ...documents].slice(0, 8));
     if (images.length) setPendingImages((prev) => [...prev, ...images].slice(0, 6));
     setParseNotes((prev) => {
       const resolvedIds = new Set(completedNotes.map((note) => note.id));
@@ -375,13 +407,15 @@ export default function HomePage() {
   async function send(customText?: string, overrideMessages?: Message[]) {
     const text = (customText ?? input).trim();
     const imagesForMessage = customText ? [] : pendingImages;
+    const documentsForMessage = customText ? [] : pendingDocuments;
     const baseMessages = overrideMessages || active?.messages || [];
-    if ((!text && !imagesForMessage.length) || !active || loading || uploadingFiles) return;
+    if ((!text && !imagesForMessage.length && !documentsForMessage.length) || !active || loading || uploadingFiles) return;
     setLoading(true);
     setInput("");
     if (!customText) {
       setPendingImages([]);
-      setParseNotes((prev) => prev.map((note) => note.state === "ready" ? { ...note, state: "sending", message: note.kind === "image" ? "Image envoyée avec le message." : "Source disponible pour la réponse." } : note));
+      setPendingDocuments([]);
+      setParseNotes((prev) => prev.map((note) => note.state === "ready" ? { ...note, state: "sending", message: note.kind === "image" ? "Image en cours d’envoi…" : "Document en cours d’envoi…" } : note));
     }
 
     const memoryDirective = extractMemoryDirective(text);
@@ -389,11 +423,23 @@ export default function HomePage() {
     const memoryForRequest = Array.from(new Set([...profileMemoryBlock(), ...nextMemory])).slice(0, 80);
     if (memoryDirective) setMemory(nextMemory);
 
-    const visibleUserContent = text || (imagesForMessage.length === 1 ? "Image envoyée" : `${imagesForMessage.length} images envoyées`);
+    const documentKnowledgeForRequest = documentsForMessage.map((doc) => `Titre: ${doc.name}\n${doc.content}`);
+    const knowledgeForRequest = [...documentKnowledgeForRequest, ...userKnowledge].slice(0, 60);
+    const attachmentSummary: AttachmentSummary[] = [
+      ...imagesForMessage.map((img) => ({ id: img.id, name: img.name, type: img.type, size: img.size, kind: "image" as const })),
+      ...documentsForMessage.map((doc) => ({ id: doc.id, name: doc.name, type: doc.type, size: doc.size, kind: "document" as const }))
+    ];
+    const attachmentLabel = attachmentSummary.length === 1
+      ? `${attachmentSummary[0].kind === "image" ? "Image" : "Document"} envoyé : ${attachmentSummary[0].name}`
+      : `${attachmentSummary.length} pièces jointes envoyées`;
+    const visibleUserContent = text || attachmentLabel;
     const imagePromptContext = imagesForMessage.length
       ? `\n\n[Images jointes par l’utilisateur : ${imagesForMessage.map((img) => `${img.name} (${img.type}, ${Math.round(img.size / 1024)} Ko)`).join(" ; ")}. Analyse visuelle non disponible côté serveur dans cette version : réponds honnêtement, demande une description si nécessaire, et utilise le message texte s’il existe.]`
       : "";
-    const userMessage: Message = { role: "user", content: visibleUserContent, images: imagesForMessage.length ? imagesForMessage : undefined };
+    const documentPromptContext = documentsForMessage.length
+      ? `\n\n[Documents joints disponibles dans les sources locales de cette requête : ${documentsForMessage.map((doc) => `${doc.name} (${Math.round(doc.size / 1024)} Ko)`).join(" ; ")}. Utilise ces sources si elles sont pertinentes.]`
+      : "";
+    const userMessage: Message = { role: "user", content: visibleUserContent, images: imagesForMessage.length ? imagesForMessage : undefined, attachments: attachmentSummary.length ? attachmentSummary : undefined };
     const optimisticMessages = [...baseMessages, userMessage];
     setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, title: thread.messages.length ? thread.title : createTitle(visibleUserContent), messages: optimisticMessages } : thread));
 
@@ -429,9 +475,9 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: optimisticMessages.map(({ role, content }, i) => ({ role, content: i === optimisticMessages.length - 1 ? `${content}${imagePromptContext}` : content })),
+          messages: optimisticMessages.map(({ role, content }, i) => ({ role, content: i === optimisticMessages.length - 1 ? `${content}${imagePromptContext}${documentPromptContext}` : content })),
           memory: memoryForRequest,
-          userKnowledge,
+          userKnowledge: knowledgeForRequest,
           responseMode: "auto",
           profile: { name: profileName, goal: profileGoal, style: profileStyle },
           conversationSummary,
@@ -449,18 +495,17 @@ export default function HomePage() {
       const safeContent = typeof data?.content === "string" && data.content.trim() ? data.content.trim() : "Je n’ai pas réussi à générer une réponse correcte cette fois. Reformule en une phrase, et je reprends proprement.";
       const assistantMessage: Message = { role: "assistant", content: safeContent, provider: data.provider, model: data.model, fallbackUsed: data.fallbackUsed, sourcesUsed: data.sourcesUsed };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
+      if (documentsForMessage.length) {
+        const items = documentsForMessage.map((doc) => ({ id: doc.id, name: doc.name, content: doc.content, size: doc.size, createdAt: Date.now() }));
+        setKnowledge((prev) => [...items, ...prev].slice(0, 120));
+      }
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: true, state: "sent", message: note.kind === "image" ? "Image envoyée avec le message." : "Document envoyé et ajouté aux sources locales." } : note).slice(0, 30));
       refreshStatus();
     } catch (error: any) {
       const assistantMessage: Message = { role: "assistant", content: error?.message || "Je suis un peu ralenti là. Réessaie dans quelques secondes." };
       setThreads((prev) => prev.map((thread) => thread.id === active.id ? { ...thread, messages: [...optimisticMessages, assistantMessage] } : thread));
+      setParseNotes((prev) => prev.map((note) => note.state === "sending" ? { ...note, ok: false, state: "error", message: "Envoi échoué. Réessaie après vérification de la connexion ou du serveur." } : note).slice(0, 30));
     } finally {
-      setParseNotes((prev): AttachmentNote[] =>
-        prev
-          .map((note): AttachmentNote =>
-            note.state === "sending" ? { ...note, state: "ready" as UploadState } : note
-          )
-          .slice(0, 30)
-      );
       setLoading(false);
     }
   }
@@ -546,6 +591,8 @@ export default function HomePage() {
     setMemory([]);
     setKnowledge([]);
     setParseNotes([]);
+    setPendingImages([]);
+    setPendingDocuments([]);
   }
 
   async function submitFeedback() {
@@ -577,6 +624,24 @@ export default function HomePage() {
     readFiles(e.target.files);
     e.target.value = "";
   }
+
+  function handleComposerDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDraggingFiles(false);
+    if (loading || uploadingFiles) return;
+    readFiles(Array.from(e.dataTransfer.files || []));
+  }
+
+  const sendDisabled = (!input.trim() && !pendingImages.length && !pendingDocuments.length) || loading || uploadingFiles;
+  const composerStatus = uploadingFiles
+    ? "Préparation des fichiers…"
+    : loading
+      ? "Envoi du message…"
+      : pendingAttachmentCount
+        ? `${pendingAttachmentCount} pièce(s) prête(s) à envoyer`
+        : failedNoteCount
+          ? `${failedNoteCount} erreur(s) à vérifier`
+          : "Prêt";
 
   const drawerTitle = drawer === "memory" ? "Mémoire" : drawer === "knowledge" ? "Sources & documents" : drawer === "brain" ? "Cerveau" : drawer === "workspace" ? "Espace" : drawer === "admin" ? "Admin" : drawer === "feedback" ? "Feedback" : drawer === "account" ? "Compte" : "NimbrayAI";
   const drawerSubtitle = drawer === "memory" ? "Ce que NimbrayAI garde en tête pour mieux t’aider." : drawer === "knowledge" ? "Tes sources alimentent le RAG local et les connaissances." : drawer === "brain" ? "Architecture du cerveau, packs et domaines couverts." : drawer === "workspace" ? "Sauvegarde locale, export, import et cloud optionnel." : drawer === "admin" ? "Diagnostic technique et commandes utiles." : drawer === "feedback" ? "Un retour rapide pour faire progresser NimbrayAI." : drawer === "account" ? "Préférences, style et informations de profil." : "Panneau latéral";
@@ -667,6 +732,17 @@ export default function HomePage() {
                         ))}
                       </div>
                     ) : null}
+                    {message.attachments?.filter((item) => item.kind === "document").length ? (
+                      <div className="message-documents">
+                        {message.attachments.filter((item) => item.kind === "document").map((item) => (
+                          <div key={item.id} className="message-document-card">
+                            <span>DOC</span>
+                            <strong>{item.name}</strong>
+                            <small>{formatFileSize(item.size)}</small>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     {message.content}
                   </div>
                 </div>
@@ -677,7 +753,7 @@ export default function HomePage() {
                 <div className="message-row assistant">
                   <div className="assistant-block">
                     <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-                    <div className="message-content thinking">NimbrayAI répond…</div>
+                    <div className="message-content thinking"><span className="typing-dots"><span /> <span /> <span /></span><span>NimbrayAI compose sa réponse…</span></div>
                   </div>
                 </div>
               ) : null}
@@ -687,7 +763,8 @@ export default function HomePage() {
         </div>
 
         <div className="composer-shell">
-          <div className="composer-panel">
+          <div className={`composer-panel ${draggingFiles ? "dragging" : ""}`} onDragOver={(e) => { e.preventDefault(); if (!loading && !uploadingFiles) setDraggingFiles(true); }} onDragLeave={() => setDraggingFiles(false)} onDrop={handleComposerDrop}>
+            {draggingFiles ? <div className="drop-hint">Dépose tes pièces jointes ici</div> : null}
             <div className="composer">
               <label className={`attach-btn ${uploadingFiles ? "busy" : ""}`} title="Ajouter des images ou fichiers">
                 <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} disabled={uploadingFiles || loading} />
@@ -699,38 +776,45 @@ export default function HomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
-                placeholder="Écris ton message à NimbrayAI…"
+                placeholder={pendingAttachmentCount ? "Ajoute une consigne pour accompagner tes fichiers…" : "Écris ton message à NimbrayAI…"}
               />
-              <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading || uploadingFiles}>{loading ? "Envoi…" : "Envoyer"}</button>
+              <button className="send-btn" onClick={() => send()} disabled={sendDisabled} aria-busy={loading}>{loading ? "Envoi…" : pendingAttachmentCount && !input.trim() ? "Envoyer fichiers" : "Envoyer"}</button>
             </div>
-            {(pendingImages.length || parseNotes.length) ? (
+            {(pendingImages.length || pendingDocuments.length || parseNotes.length) ? (
               <div className="attachment-tray" aria-live="polite">
                 <div className="attachment-tray-head">
-                  <strong>{uploadingFiles ? "Préparation des pièces jointes…" : pendingAttachmentCount ? "Pièces jointes prêtes" : "Pièces jointes"}</strong>
-                  <span>{pendingAttachmentCount} prête(s)</span>
+                  <strong>{uploadingFiles ? "Préparation des pièces jointes…" : pendingAttachmentCount ? "Pièces jointes prêtes" : failedNoteCount ? "Erreur sur pièce jointe" : "Pièces jointes"}</strong>
+                  <span>{composerStatus}</span>
                 </div>
-                {pendingImages.length ? (
+                {pendingImages.length || pendingDocuments.length ? (
                   <div className="pending-images">
                     {pendingImages.map((image) => (
                       <div key={image.id} className="pending-image ready">
                         <img src={image.dataUrl} alt={image.name} />
-                        <span>{image.name}<small>{Math.max(1, Math.round(image.size / 1024))} Ko · prêt</small></span>
-                        <button type="button" aria-label={`Retirer ${image.name}`} onClick={() => setPendingImages((prev) => prev.filter((item) => item.id !== image.id))}>×</button>
+                        <span><strong>{image.name}</strong><small>{formatFileSize(image.size)} · image prête</small></span>
+                        <button type="button" aria-label={`Retirer ${image.name}`} onClick={() => removePendingAttachment(image.id)}>×</button>
+                      </div>
+                    ))}
+                    {pendingDocuments.map((doc) => (
+                      <div key={doc.id} className="pending-image pending-document ready">
+                        <div className="document-thumb">DOC</div>
+                        <span><strong>{doc.name}</strong><small>{formatFileSize(doc.size)} · document prêt</small></span>
+                        <button type="button" aria-label={`Retirer ${doc.name}`} onClick={() => removePendingAttachment(doc.id)}>×</button>
                       </div>
                     ))}
                   </div>
                 ) : null}
                 <div className="attachment-status-list">
-                  {parseNotes.slice(0, 4).map((note) => (
+                  {parseNotes.slice(0, 6).map((note) => (
                     <div key={note.id} className={`attachment-status ${note.state}`}>
-                      <span className="attachment-status-icon">{note.state === "processing" ? "…" : note.state === "error" ? "!" : note.kind === "image" ? "IMG" : "DOC"}</span>
-                      <span><strong>{note.name}</strong><small>{note.message}</small></span>
+                      <span className="attachment-status-icon">{attachmentStateIcon(note)}</span>
+                      <span><strong>{attachmentStateLabel(note.state)} · {note.name}</strong><small>{note.message}</small></span>
                     </div>
                   ))}
                 </div>
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images et fichiers acceptés</div>
+            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Glisser-déposer, images et fichiers acceptés</div>
           </div>
         </div>
       </section>
