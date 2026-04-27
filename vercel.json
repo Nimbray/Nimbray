@@ -1,4 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "installCommand": "corepack enable && yarn install --ignore-engines",
+  "buildCommand": "yarn build",
   "framework": "nextjs"
 }
