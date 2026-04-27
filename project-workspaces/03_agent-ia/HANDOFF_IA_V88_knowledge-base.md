@@ -24,7 +24,7 @@ Intégrer les connaissances historiques de NimbrayAI_Online dans la source GitHu
 - Préparation pour une future indexation intelligente.
 
 ## Risques
-- Certaines connaissances peuvent être redondantes.
+- Beaucoup de connaissances peuvent être redondantes.
 - Certains contenus peuvent être anciens.
 - Il faudra ensuite créer un index ou un routeur de connaissances.
 
