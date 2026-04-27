@@ -620,3 +620,79 @@ textarea:focus {
   background: rgba(230,73,93,.09);
   color: var(--danger);
 }
+
+/* V85 Frontend: clearer attachment states and mobile-first upload preview */
+.attach-btn.busy {
+  color: var(--blue-strong);
+  background: var(--blue-soft);
+  border-color: rgba(45,140,255,.28);
+  cursor: progress;
+}
+.attachment-tray {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid rgba(45,140,255,.14);
+  border-radius: 22px;
+  background: rgba(255,255,255,.76);
+  box-shadow: var(--shadow-soft);
+}
+.attachment-tray-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.attachment-tray-head strong { color: var(--text); font-size: 13px; }
+.attachment-status-list { display: grid; gap: 7px; margin-top: 8px; }
+.attachment-status {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(248,251,255,.84);
+}
+.attachment-status.ready { border-color: rgba(23,178,106,.24); background: rgba(23,178,106,.08); }
+.attachment-status.sending { border-color: rgba(45,140,255,.24); background: rgba(45,140,255,.08); }
+.attachment-status.processing { border-color: rgba(255,216,77,.36); background: rgba(255,216,77,.16); }
+.attachment-status.error { border-color: rgba(214,69,69,.25); background: rgba(214,69,69,.08); }
+.attachment-status-icon {
+  width: 34px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,.76);
+  border: 1px solid var(--line);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-soft);
+}
+.attachment-status span:last-child { min-width: 0; }
+.attachment-status strong,
+.pending-image span { display: grid; min-width: 0; }
+.attachment-status small,
+.pending-image small {
+  margin-top: 2px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-faint);
+  font-size: 11px;
+  font-weight: 500;
+}
+.pending-image.ready { border-color: rgba(23,178,106,.22); }
+
+@media (max-width: 960px) {
+  .attachment-tray { border-radius: 18px; padding: 9px; }
+  .attachment-tray-head { margin-bottom: 7px; }
+  .pending-images { grid-template-columns: 1fr; }
+  .attachment-status-list { max-height: 142px; overflow: auto; }
+  .attachment-status { grid-template-columns: 36px minmax(0, 1fr); padding: 7px 8px; }
+}
