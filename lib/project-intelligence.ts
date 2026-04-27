@@ -43,7 +43,7 @@ function unique(list: string[], max = 8) {
 
 function inferLatestVersion(text: string) {
   const matches = Array.from(text.matchAll(/\bV\s?(\d{1,3})(?:[\.,](\d{1,3}))?\b/gi));
-  if (!matches.length) return "V72";
+  if (!matches.length) return "V84";
   const last = matches[matches.length - 1];
   return `V${last[1]}${last[2] ? `.${last[2]}` : ""}`;
 }
@@ -65,8 +65,11 @@ function extractNextActions(messages: MessageLike[], latestUser: string) {
   if (/v71\.3|contextual safety|adieu|securite contextuelle/.test(q)) {
     actions.push("Valider que V71.3 répond bien aux signaux de danger contextuels, même après une demande de silence.");
   }
+  if (/v85|naturel|repetition|personnalite|orchestration|agent ia|agents internes/.test(q)) {
+    actions.push("Livrer V85 Agent IA : réponses plus naturelles, anti-répétition, personnalité Nimbray et orchestration interne plus claire.");
+  }
   if (/v72|memoire|memory|project intelligence|projet/.test(q)) {
-    actions.push("Construire V72 autour de la mémoire projet, du suivi des décisions et des prochaines actions.");
+    actions.push("Préserver la mémoire projet, le suivi des décisions et les prochaines actions sans inventer d’historique.");
   }
   if (/vercel|deploy|deployer|production/.test(q)) {
     actions.push("Tester localement avec npm run build, puis déployer sur Vercel uniquement après validation des scénarios critiques.");
@@ -101,7 +104,7 @@ export function buildProjectSnapshot(params: {
   const memory = Array.isArray(params.memory) ? params.memory.map(String) : [];
   const projectContext = params.projectContext || {};
   const text = [params.latestUser, ...memory, ...params.messages.slice(-18).map((m) => m.content), JSON.stringify(projectContext)].join("\n");
-  const currentVersion = inferLatestVersion(text) === "V72" ? "V72" : inferLatestVersion(text);
+  const currentVersion = inferLatestVersion(text);
 
   const decisions = extractDecisionCandidates(params.messages, memory);
   const nextActions = extractNextActions(params.messages, params.latestUser);
@@ -117,25 +120,25 @@ export function buildProjectSnapshot(params: {
       "Chaque version doit enrichir le cerveau interne de NimbrayAI."
     ],
     nextActions,
-    risks: risks.length ? risks : ["Ne pas ajouter de fonctionnalités avancées avant de stabiliser le cœur conversationnel."],
+    risks: risks.length ? risks : ["Ne pas ajouter de fonctionnalités avancées avant de stabiliser le cœur conversationnel et la coordination multi-agents."],
     confidence: decisions.length >= 3 ? "high" : decisions.length ? "medium" : "low"
   };
 }
 
 export function projectGuidance(snapshot: ProjectSnapshot) {
   return `
-V72 Memory & Project Intelligence :
+V85 Project Context & Memory Intelligence :
 - Projet actif : ${snapshot.projectName}.
 - Version/focus détecté : ${snapshot.currentVersion} — ${snapshot.focus}.
 - Décisions utiles : ${snapshot.decisions.slice(0, 5).join(" ; ")}.
 - Prochaines actions probables : ${snapshot.nextActions.slice(0, 4).join(" ; ")}.
 - Risques à surveiller : ${snapshot.risks.slice(0, 3).join(" ; ")}.
-Quand l'utilisateur demande où en est le projet, la prochaine version, les décisions ou la roadmap, réponds comme un copilote projet : clair, structuré, concret, sans inventer de faux historique.`;
+Quand l'utilisateur demande où en est le projet, la prochaine version, les décisions, les agents ou la roadmap, réponds comme un copilote projet : clair, structuré, concret, sans inventer de faux historique.`;
 }
 
 export function projectIntelligenceReply(latestUser: string, snapshot: ProjectSnapshot) {
   const q = normalize(latestUser);
-  const asksStatus = /\b(ou on en est|où on en est|etat du projet|point projet|resume le projet|resume projet|version actuelle|prochaine etape|prochaine version|roadmap|decisions prises|qu est ce qu on fait maintenant|sur quoi on bosse|continue le projet)\b/.test(q);
+  const asksStatus = /\b(ou on en est|où on en est|etat du projet|point projet|resume le projet|resume projet|version actuelle|prochaine etape|prochaine version|roadmap|decisions prises|qu est ce qu on fait maintenant|sur quoi on bosse|continue le projet|agents internes|agent ia|handoff ia)\b/.test(q);
   if (!asksStatus) return null;
 
   const decisions = snapshot.decisions.slice(0, 5).map((d) => `- ${d}`).join("\n");

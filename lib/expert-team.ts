@@ -33,6 +33,10 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
     /\bfrontend\b/,
     /\bbackend\b/,
     /\bagent ia\b/,
+    /\bagents internes?\b/,
+    /\borchestration\b/,
+    /\bpersonnalite\b/,
+    /\brepetitions?\b/,
   ]);
 
   const teamRequest = hasAny(q, [
@@ -43,6 +47,9 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
     /\btravailler\b.*\bensemble/,
     /\bbosser fort\b/,
     /\bavancer enormement\b/,
+    /\brendre\b.*\breponses\b.*\bnaturelles?\b/,
+    /\breduire\b.*\brepetitions?\b/,
+    /\bameliore\b.*\bpersonnalite\b/,
     /\btous les aspects\b/,
     /\bmode commando\b/,
     /\bsprint\b/,
@@ -58,7 +65,7 @@ export function detectExpertTeamRequest(latestUser: string, messages: MessageLik
 
 export function expertTeamGuidance() {
   return `
-V84 Expert Team Orchestrator + GitHub Agent Automation :
+V85 Expert Team Orchestrator + Natural Agent IA :
 - Pour le projet NimbrayAI, raisonne comme une équipe senior coordonnée : Produit, IA, Backend, Frontend.
 - Produit choisit ce qui augmente vraiment la valeur utilisateur maintenant.
 - IA améliore raisonnement, naturel, mémoire, vérité, sécurité et gestion des sources.
@@ -66,6 +73,7 @@ V84 Expert Team Orchestrator + GitHub Agent Automation :
 - Frontend améliore interface, mobile, feedback visuel, accessibilité, fichiers et qualité perçue.
 - Ne livre pas quatre avis isolés : fusionne en une décision, un sprint, des tâches concrètes et des critères de test.
 - Pour une demande ambitieuse, produis : cap, chantier prioritaire, actions par rôle, risques, tests, prochaine version.
+- V85 : quand le chantier concerne Agent IA, priorise naturel, anti-répétition, personnalité Nimbray, vérité, contexte projet et handoff clair.
 - Priorité absolue : stabilité, utilité, simplicité, vitesse de livraison, compatibilité Vercel, ZIP léger, dernière version comme source officielle, conversations du projet synchronisées et espace de travail séparé par agent/conversation, index CURRENT_SOURCE.json, GitHub Actions, Pull Requests, CODEOWNERS et commandes agent:start/agent:merge-check.`;
 }
 
@@ -74,7 +82,7 @@ export function expertTeamReply(latestUser: string, messages: MessageLike[] = []
 
   return {
     intent: "expert-team-orchestration",
-    content: `Oui. On passe en **mode équipe d’experts V84** : on ne fait plus seulement des petits patchs, on organise NimbrayAI comme un vrai produit qui progresse vite sans devenir fragile.
+    content: `Oui. On passe en **mode équipe d’experts V85** : on ne fait plus seulement des petits patchs, on organise NimbrayAI comme un vrai produit qui progresse vite sans devenir fragile.
 
 **Décision commune**
 On avance en sprint court avec 4 rôles synchronisés : Produit décide la priorité, IA améliore le cerveau, Backend solidifie le moteur, Frontend rend l’expérience premium.
@@ -82,7 +90,7 @@ On avance en sprint court avec 4 rôles synchronisés : Produit décide la prior
 **Synchronisation des conversations**
 Toutes les conversations du projet IA peuvent apporter des idées, mais elles ne remplacent jamais la source active. On récupère les bonnes décisions, puis on les réapplique sur le dernier ZIP officiel pour éviter les régressions.
 
-**Sprint V84 — GitHub multi-agents automatisé**
+**Sprint V85 — Agent IA naturel et orchestrateur interne**
 
 **Agent Produit**
 - Transformer les idées en priorités : urgent, important, plus tard.
@@ -94,6 +102,8 @@ Toutes les conversations du projet IA peuvent apporter des idées, mais elles ne
 - Réduire les réponses robotiques et répétitives.
 - Améliorer vérité, prudence, sources, mémoire et situations sensibles.
 - Faire parler les agents ensemble sans afficher un rapport inutilement long.
+- Ajouter une couche anti-répétition et post-traitement de style pour enlever les phrases robotiques.
+- Renforcer le contexte projet IA dans les réponses qui parlent de NimbrayAI, des branches et des handoffs.
 
 **Agent Backend**
 - Sécuriser les routes API chat, parse-doc, status, sync et les erreurs provider.
@@ -121,6 +131,6 @@ Toutes les conversations du projet IA peuvent apporter des idées, mais elles ne
 6. Build : npm install puis npm run build.
 
 **Prochaine version logique**
-La V84 devient la version **GitHub Agent Automation** : elle conserve V83 Auto Source Sync, puis ajoute GitHub Actions, Pull Request template, CODEOWNERS, AGENT_CHANGELOG.json et les scripts agent:start, agent:handoff, agent:changelog et agent:merge-check.`
+La V85 devient la version **Agent IA Natural Orchestration** : elle part de V84 GitHub Agent Automation, puis améliore le naturel des réponses, réduit les répétitions, renforce la personnalité Nimbray, clarifie le contexte projet IA et documente le handoff Agent IA avant Pull Request.`
   };
 }

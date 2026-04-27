@@ -28,6 +28,34 @@
         "npm run source:check",
         "npm run agent:merge-check"
       ]
+    },
+    {
+      "version": "85.0.0-proposed",
+      "agent": "ia",
+      "branch": "agent/ai/v84-v85-natural-orchestration",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "V85 Agent IA: réponses naturelles, anti-répétition, personnalité Nimbray et orchestration interne.",
+      "files": [
+        "app/api/chat/route.ts",
+        "lib/response-polish.ts",
+        "lib/natural-intelligence.ts",
+        "lib/project-intelligence.ts",
+        "lib/expert-team.ts",
+        "lib/brain.ts",
+        "docs/V85_AGENT_IA_NATURAL_ORCHESTRATION.md",
+        "project-workspaces/03_agent-ia/HANDOFF_IA_V85_natural-orchestration.md",
+        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
+      ],
+      "risks": [
+        "Installer les dépendances puis lancer npm run build avant merge.",
+        "Coordonner avec les branches Backend et Frontend sur app/api/chat/route.ts."
+      ],
+      "tests": [
+        "npm run source:check",
+        "npm run agent:merge-check",
+        "npm run build"
+      ]
     }
   ]
 }
