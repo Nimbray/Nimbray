@@ -30,31 +30,85 @@
       ]
     },
     {
-      "version": "85.0.0-proposed",
-      "agent": "ia",
-      "branch": "agent/ai/v84-v85-natural-orchestration",
+      "version": "84.0.0",
+      "agent": "backend",
+      "branch": "agent/backend/v85-upload-api-real",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V85 Agent IA: réponses naturelles, anti-répétition, personnalité Nimbray et orchestration interne.",
+      "summary": "V85 réelle : solidification de /api/chat pour messages avec pièces jointes, parsing JSON/multipart et erreurs client lisibles.",
       "files": [
         "app/api/chat/route.ts",
-        "lib/response-polish.ts",
-        "lib/natural-intelligence.ts",
-        "lib/project-intelligence.ts",
-        "lib/expert-team.ts",
-        "lib/brain.ts",
-        "docs/V85_AGENT_IA_NATURAL_ORCHESTRATION.md",
-        "project-workspaces/03_agent-ia/HANDOFF_IA_V85_natural-orchestration.md",
-        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
+        "package.json",
+        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V85_upload-api-real.md",
+        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
       ],
       "risks": [
-        "Installer les dépendances puis lancer npm run build avant merge.",
-        "Coordonner avec les branches Backend et Frontend sur app/api/chat/route.ts."
+        "Le frontend doit encore envoyer un champ attachments structuré pour exploiter totalement le nouveau chemin backend.",
+        "Le build Next local reste bloqué longtemps sur Creating an optimized production build dans cette archive."
       ],
       "tests": [
         "npm run source:check",
         "npm run agent:merge-check",
-        "npm run build"
+        "npm run lint",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "version": "84.0.0",
+      "agent": "backend",
+      "branch": "agent/backend/v86-vercel-upload-validation",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "V86 : validation réelle de /api/chat après V85, tests JSON/multipart/image/fichier/limites et amélioration des erreurs upload.",
+      "files": [
+        "app/api/chat/route.ts",
+        "AGENT_CHANGELOG.json",
+        "project-workspaces/04_agent-backend/BACKEND_V86_TEST_REPORT.md",
+        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V86_vercel-upload-validation.md",
+        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+      ],
+      "risks": [
+        "Les images sont reçues et tracées comme pièces jointes, mais l'analyse vision réelle reste volontairement non promise sans modèle vision branché.",
+        "Le fichier uploadé dans multipart est validé par métadonnées ; l'extraction texte serveur complète reste une évolution séparée."
+      ],
+      "tests": [
+        "Next dev /api/chat smoke test : JSON texte seul => 200",
+        "Next dev /api/chat smoke test : multipart image => 200 avec attachment meta",
+        "Next dev /api/chat smoke test : multipart fichier => 200 avec attachment meta",
+        "Next dev /api/chat smoke test : content-type non supporté => 415 UNSUPPORTED_CONTENT_TYPE",
+        "Next dev /api/chat smoke test : trop de pièces jointes => 413 TOO_MANY_ATTACHMENTS",
+        "Next dev /api/chat smoke test : fichier trop lourd => 413 UPLOAD_TOO_LARGE",
+        "node scripts/agent-merge-check.js",
+        "npm run lint",
+        "tsc --noEmit --pretty false --incremental false"
+      ]
+    },
+    {
+      "version": "84.0.0",
+      "agent": "backend",
+      "branch": "agent/backend/v87-observability-api",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "V87 : observabilité propre de /api/chat, structure d’erreur stable, requestId et validation renforcée des cas limites upload.",
+      "files": [
+        "app/api/chat/route.ts",
+        "AGENT_CHANGELOG.json",
+        "project-workspaces/04_agent-backend/BACKEND_V87_API_SCENARIOS.md",
+        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V87_observability-api.md",
+        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
+      ],
+      "risks": [
+        "Les images sont toujours reçues mais non analysées sans modèle vision configuré.",
+        "La liste MIME autorisée peut nécessiter des ajouts si le frontend transmet des types plus spécifiques.",
+        "Le typecheck local reste bloqué dans cette archive ; à confirmer via GitHub Actions."
+      ],
+      "tests": [
+        "Audit app/api/chat/route.ts",
+        "Vérification statique codes erreurs : EMPTY_FILE, UNSUPPORTED_FILE_TYPE, MULTIPART_PAYLOAD_INVALID, UPLOAD_TOO_LARGE, UPLOAD_TOTAL_TOO_LARGE",
+        "npm run source:check",
+        "node scripts/agent-merge-check.js",
+        "npm run lint : sortie no-op observée",
+        "npm run typecheck : lancé mais timeout local sans erreur affichée"
       ]
     }
   ]
