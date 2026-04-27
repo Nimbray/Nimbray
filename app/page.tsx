@@ -31,6 +31,12 @@ function createTitle(text: string) {
   return clean.length > 38 ? `${clean.slice(0, 38)}…` : clean || "Nouvelle discussion";
 }
 
+function formatFileSize(bytes: number) {
+  if (!bytes) return "0 Ko";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} Ko`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+}
+
 function threadsForStorage(list: Thread[]) {
   return list.map((thread) => ({
     ...thread,
@@ -109,10 +115,13 @@ function AssistantMessage({ message, isLatest }: { message: Message; isLatest: b
   return (
     <div className="message-row assistant">
       <div className="assistant-block">
-        <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-        <div className="message-content">{visible}</div>
+        <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span>{message.provider ? <span className="provider-chip">{message.provider}</span> : null}</div>
+        <div className="message-card assistant-card">
+          <div className="message-content">{visible}</div>
+        </div>
         <div className="message-actions">
           <button onClick={() => navigator.clipboard?.writeText(message.content)}>Copier</button>
+          {message.fallbackUsed ? <span>Fallback activé</span> : null}
         </div>
         {message.sourcesUsed?.length ? (
           <details className="sources-details">
@@ -556,7 +565,7 @@ export default function HomePage() {
             <div className="brand-mark">N</div>
             <div>
               <div className="brand-name">NimbrayAI</div>
-              <div className="brand-sub">Nimbray multi-agent</div>
+              <div className="brand-sub">Interface IA premium</div>
             </div>
           </div>
 
@@ -602,10 +611,11 @@ export default function HomePage() {
           <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Ouvrir le menu">☰</button>
           <div className="topbar-title">
             <h1>{active?.title || "Nouvelle discussion"}</h1>
-            <p>Produit, IA, Backend, Frontend — ensemble.</p>
+            <p><span className="live-dot" /> Chat, sources, mémoire et agents projet.</p>
           </div>
           <div className="topbar-actions">
             <button onClick={() => regenerate()} disabled={loading || !active?.messages.length}>Régénérer</button>
+            <button onClick={() => setDrawer("knowledge")}>Sources</button>
             <button onClick={() => setDrawer("workspace")}>Espace</button>
           </div>
         </header>
@@ -614,14 +624,20 @@ export default function HomePage() {
           {!active?.messages.length ? (
             <div className="welcome clean-welcome">
               <div className="welcome-logo">N</div>
-              <h2>Bonjour, que veux-tu demander à NimbrayAI&nbsp;?</h2>
-              <p className="welcome-minimal-text">Une IA simple, humaine et utile.</p>
+              <span className="welcome-eyebrow">NimbrayAI · Projet IA</span>
+              <h2>Une interface claire pour penser, créer et avancer.</h2>
+              <p className="welcome-minimal-text">Pose une question, joins une image ou ajoute un document : Nimbray garde le contexte projet au centre sans alourdir l’expérience.</p>
+              <div className="prompt-grid" aria-label="Suggestions de démarrage">
+                <button onClick={() => setInput("Aide-moi à améliorer le produit Nimbray avec une réponse claire et actionnable.")}>Améliorer le produit</button>
+                <button onClick={() => setInput("Analyse ce point technique et donne-moi les prochaines étapes propres.")}>Analyser un sujet technique</button>
+                <button onClick={() => setDrawer("knowledge")}>Ajouter des sources</button>
+              </div>
             </div>
           ) : (
             <div className="messages-list">
               {active.messages.map((message, index) => message.role === "user" ? (
                 <div key={index} className="message-row user">
-                  <div className="user-bubble">
+                  <div className="user-bubble message-card">
                     {message.images?.length ? (
                       <div className="message-images">
                         {message.images.filter((image) => image.dataUrl).map((image) => (
@@ -642,7 +658,10 @@ export default function HomePage() {
                 <div className="message-row assistant">
                   <div className="assistant-block">
                     <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-                    <div className="message-content thinking">NimbrayAI répond…</div>
+                    <div className="message-card assistant-card loading-card" aria-live="polite">
+                      <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+                      <span className="thinking">Nimbray prépare une réponse propre…</span>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -656,7 +675,7 @@ export default function HomePage() {
             <div className="composer">
               <label className="attach-btn" title="Ajouter des sources">
                 <input type="file" multiple accept="image/*,.txt,.md,.csv,.json,.js,.ts,.tsx,.jsx,.css,.html,.py,.sql,.xml,.yaml,.yml,.log,.pdf,.docx" onChange={handleFileInput} />
-                ＋
+                <span aria-hidden="true">＋</span>
               </label>
               <textarea
                 ref={textareaRef}
@@ -664,7 +683,7 @@ export default function HomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
-                placeholder="Écris ton message à NimbrayAI…"
+                placeholder="Message, idée, question ou consigne projet…"
               />
               <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading}>Envoyer</button>
             </div>
@@ -673,13 +692,13 @@ export default function HomePage() {
                 {pendingImages.map((image) => (
                   <div key={image.id} className="pending-image">
                     <img src={image.dataUrl} alt={image.name} />
-                    <span>{image.name}</span>
+                    <span><strong>{image.name}</strong><small>{formatFileSize(image.size)}</small></span>
                     <button type="button" onClick={() => setPendingImages((prev) => prev.filter((item) => item.id !== image.id))}>×</button>
                   </div>
                 ))}
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images acceptées</div>
+            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images et documents acceptés</div>
           </div>
         </div>
       </section>
@@ -719,7 +738,7 @@ export default function HomePage() {
                   <strong>Ajouter des sources</strong>
                   <span>TXT, MD, CSV, JSON, code, PDF, DOCX</span>
                 </label>
-                <div className="source-grid-note">Le cerveau V46 regroupe les connaissances en pôles : comportement, savoir stable, action, sécurité, documents et mémoire.</div>
+                <div className="source-grid-note">Les documents ajoutés restent disponibles comme sources locales pour enrichir les réponses sans modifier le contrat de chat.</div>
                 {parseNotes.length ? (
                   <div className="parse-notes">
                     {parseNotes.map((note, i) => (
@@ -733,7 +752,7 @@ export default function HomePage() {
                 <div className="memory-list">
                   {knowledge.length ? knowledge.map((item) => (
                     <div key={item.id} className="memory-item">
-                      <span><strong>{item.name}</strong><br />{Math.round(item.size / 1024)} Ko</span>
+                      <span><strong>{item.name}</strong><br />{formatFileSize(item.size)}</span>
                       <button onClick={() => setKnowledge((p) => p.filter((k) => k.id !== item.id))}>Supprimer</button>
                     </div>
                   )) : <div className="empty">Aucune source locale.</div>}
