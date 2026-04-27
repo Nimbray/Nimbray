@@ -696,3 +696,337 @@ textarea:focus {
   .attachment-status-list { max-height: 142px; overflow: auto; }
   .attachment-status { grid-template-columns: 36px minmax(0, 1fr); padding: 7px 8px; }
 }
+
+
+/* V86 Frontend: document previews, sent state, stronger mobile upload E2E feedback */
+.message-documents {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.message-document-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, 100%);
+  padding: 8px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(45,140,255,.16);
+  background: rgba(255,255,255,.64);
+}
+.message-document-card span,
+.document-thumb {
+  width: 34px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(232,242,255,.86);
+  color: var(--blue-strong);
+  font-size: 10px;
+  font-weight: 850;
+}
+.message-document-card strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.message-document-card small {
+  color: var(--text-faint);
+  font-size: 11px;
+}
+.pending-document {
+  grid-template-columns: 42px minmax(0, 1fr) 28px;
+}
+.attachment-status.sent {
+  border-color: rgba(23,178,106,.24);
+  background: rgba(23,178,106,.08);
+}
+.attachment-status.error .attachment-status-icon {
+  color: var(--danger);
+}
+.pending-image button:focus-visible,
+.attach-btn:focus-visible,
+.send-btn:focus-visible {
+  outline: 3px solid rgba(45,140,255,.22);
+  outline-offset: 2px;
+}
+
+@media (max-width: 960px) {
+  .message-document-card {
+    max-width: 100%;
+  }
+  .pending-document,
+  .pending-image {
+    grid-template-columns: 38px minmax(0, 1fr) 32px;
+    min-height: 52px;
+  }
+  .document-thumb {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+  .pending-image button {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* V87 Frontend: premium chat UX polishing without changing upload flow */
+.shell.v46-shell {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(45,140,255,.13), transparent 28%),
+    radial-gradient(circle at 82% 4%, rgba(255,216,77,.16), transparent 22%),
+    linear-gradient(135deg, rgba(255,255,255,.62), rgba(238,244,255,.58));
+}
+.sidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(247,250,255,.68));
+  box-shadow: inset -1px 0 0 rgba(255,255,255,.72);
+}
+.brand-mark,
+.signature-mark,
+.welcome-logo {
+  position: relative;
+  overflow: hidden;
+}
+.brand-mark::after,
+.welcome-logo::after {
+  content: "";
+  position: absolute;
+  inset: -35% auto auto -60%;
+  width: 75%;
+  height: 170%;
+  transform: rotate(28deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.48), transparent);
+}
+.thread-item.active {
+  background: linear-gradient(145deg, rgba(255,255,255,.9), rgba(232,242,255,.78));
+}
+.topbar {
+  background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(255,255,255,.48));
+  box-shadow: 0 10px 32px rgba(30,62,120,.04);
+}
+.messages-area {
+  scroll-behavior: smooth;
+  background:
+    linear-gradient(90deg, rgba(45,140,255,.04) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(45,140,255,.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  background-position: center top;
+}
+.message-row {
+  animation: message-in .22s ease both;
+}
+@keyframes message-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.user-bubble {
+  position: relative;
+  padding: 14px 17px;
+  background: linear-gradient(145deg, rgba(224,239,255,.98), rgba(247,251,255,.94));
+  border-color: rgba(45,140,255,.2);
+  box-shadow: 0 16px 36px rgba(45,140,255,.10), inset 0 1px 0 rgba(255,255,255,.82);
+}
+.user-bubble::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  border-bottom-left-radius: 16px;
+  background: linear-gradient(145deg, rgba(224,239,255,.98), rgba(247,251,255,.94));
+}
+.assistant-block {
+  padding: 2px 0 2px 2px;
+}
+.message-content {
+  max-width: 72ch;
+}
+.message-actions button {
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: rgba(255,255,255,.44);
+}
+.message-actions button:hover {
+  background: rgba(232,242,255,.9);
+}
+.thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 13px;
+  border: 1px solid rgba(45,140,255,.12);
+  border-radius: 16px;
+  background: rgba(255,255,255,.72);
+  box-shadow: var(--shadow-soft);
+}
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--blue-strong);
+  opacity: .36;
+  animation: typing-pulse 1s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: .14s; }
+.typing-dots span:nth-child(3) { animation-delay: .28s; }
+@keyframes typing-pulse {
+  0%, 100% { transform: translateY(0); opacity: .28; }
+  50% { transform: translateY(-3px); opacity: .85; }
+}
+.message-image-card img {
+  border-radius: 20px;
+  box-shadow: 0 14px 32px rgba(30,62,120,.12);
+}
+.message-document-card {
+  background: linear-gradient(145deg, rgba(255,255,255,.86), rgba(238,246,255,.76));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+.composer-panel {
+  position: relative;
+  transition: transform .18s ease, filter .18s ease;
+}
+.composer-panel.dragging .composer,
+.composer-panel.dragging .attachment-tray {
+  border-color: rgba(45,140,255,.38);
+  box-shadow: 0 24px 70px rgba(45,140,255,.18);
+  transform: translateY(-1px);
+}
+.drop-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  z-index: 5;
+  transform: translateX(-50%);
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(45,140,255,.22);
+  background: rgba(255,255,255,.92);
+  color: var(--blue-strong);
+  box-shadow: var(--shadow-soft);
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.composer {
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(249,252,255,.9));
+  box-shadow: 0 22px 60px rgba(30,62,120,.11), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.attach-btn,
+.send-btn {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.52);
+}
+.send-btn[aria-busy="true"] {
+  cursor: progress;
+  background: linear-gradient(135deg, #245fbd, var(--blue));
+}
+.attachment-tray {
+  background: linear-gradient(145deg, rgba(255,255,255,.92), rgba(247,251,255,.86));
+  box-shadow: 0 16px 42px rgba(30,62,120,.08), inset 0 1px 0 rgba(255,255,255,.88);
+}
+.attachment-tray-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.attachment-tray-head strong::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ok);
+  box-shadow: 0 0 0 4px rgba(23,178,106,.10);
+}
+.pending-image {
+  grid-template-columns: 48px minmax(0, 1fr) 32px;
+  padding: 9px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255,255,255,.92), rgba(244,249,255,.8));
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.pending-image:hover {
+  transform: translateY(-1px);
+  border-color: rgba(45,140,255,.25);
+  box-shadow: 0 14px 32px rgba(30,62,120,.08);
+}
+.pending-image img,
+.document-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+.pending-image span strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+}
+.pending-image button {
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  transition: .15s ease;
+}
+.pending-image button:hover {
+  background: rgba(214,69,69,.14);
+  transform: scale(1.04);
+}
+.attachment-status {
+  border-radius: 18px;
+  background: rgba(255,255,255,.72);
+}
+.attachment-status.sending .attachment-status-icon,
+.attachment-status.processing .attachment-status-icon {
+  animation: upload-breathe 1.25s infinite ease-in-out;
+}
+@keyframes upload-breathe {
+  0%, 100% { transform: scale(1); opacity: .72; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+.attachment-status.sent .attachment-status-icon {
+  color: var(--ok);
+  border-color: rgba(23,178,106,.28);
+}
+.attachment-status strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clean-welcome {
+  animation: message-in .28s ease both;
+}
+@media (max-width: 960px) {
+  .messages-area { background-size: 34px 34px; }
+  .user-bubble {
+    max-width: 91%;
+    border-radius: 20px 20px 7px 20px;
+  }
+  .thinking {
+    max-width: 100%;
+    font-size: 14px;
+  }
+  .drop-hint {
+    bottom: calc(100% + 8px);
+    font-size: 12px;
+  }
+  .composer {
+    box-shadow: 0 16px 42px rgba(30,62,120,.12), inset 0 1px 0 rgba(255,255,255,.9);
+  }
+  .pending-image img,
+  .document-thumb {
+    width: 38px;
+    height: 38px;
+  }
+}

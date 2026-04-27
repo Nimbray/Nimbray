@@ -30,31 +30,74 @@
       ]
     },
     {
-      "version": "85.0.0-proposed",
-      "agent": "ia",
-      "branch": "agent/ai/v84-v85-natural-orchestration",
+      "version": "85.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v84-v85-chat-attachments",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "V85 Agent IA: réponses naturelles, anti-répétition, personnalité Nimbray et orchestration interne.",
+      "summary": "Improve chat attachment upload preview and states",
       "files": [
-        "app/api/chat/route.ts",
-        "lib/response-polish.ts",
-        "lib/natural-intelligence.ts",
-        "lib/project-intelligence.ts",
-        "lib/expert-team.ts",
-        "lib/brain.ts",
-        "docs/V85_AGENT_IA_NATURAL_ORCHESTRATION.md",
-        "project-workspaces/03_agent-ia/HANDOFF_IA_V85_natural-orchestration.md",
-        "project-workspaces/03_agent-ia/BRAIN_WORKLOG.md"
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V85_chat-attachments.md"
       ],
       "risks": [
-        "Installer les dépendances puis lancer npm run build avant merge.",
-        "Coordonner avec les branches Backend et Frontend sur app/api/chat/route.ts."
+        "Build not executed in zip environment because dependencies are missing",
+        "PR check requires real Git branch"
       ],
       "tests": [
-        "npm run source:check",
-        "npm run agent:merge-check",
-        "npm run build"
+        "npm run agent:merge-check"
+      ]
+    },
+    {
+      "version": "86.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v86-upload-e2e-ui",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "Solidify end-to-end chat upload UI for images and documents",
+      "files": [
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V86_upload-e2e-ui.md",
+        "project-workspaces/05_agent-frontend/PR_FRONTEND_V86_UPLOAD_E2E_UI.md"
+      ],
+      "risks": [
+        "Build not executed fully in zip environment because dependencies are missing",
+        "Real browser E2E must be rerun in the GitHub repo with installed dependencies",
+        "Images remain frontend context; server-side vision is not implemented in this PR"
+      ],
+      "tests": [
+        "node scripts/source-manager.js check",
+        "node scripts/agent-merge-check.js",
+        "npm run build attempted: next not found"
+      ]
+    },
+    {
+      "version": "87.0.0",
+      "agent": "frontend",
+      "branch": "agent/frontend/v87-premium-chat-ux",
+      "status": "proposed",
+      "date": "2026-04-27",
+      "summary": "Polish premium chat UX while preserving V86 attachment upload flow",
+      "files": [
+        "app/page.tsx",
+        "app/globals.css",
+        "project-workspaces/05_agent-frontend/FRONTEND_WORKLOG.md",
+        "project-workspaces/05_agent-frontend/HANDOFF_FRONTEND_V87_premium-chat-ux.md",
+        "project-workspaces/05_agent-frontend/PR_FRONTEND_V87_PREMIUM_CHAT_UX.md"
+      ],
+      "risks": [
+        "Build not executed fully in zip environment because dependencies are missing",
+        "Real browser desktop/mobile upload checks must be rerun in the GitHub repo",
+        "Drag-and-drop depends on standard browser DataTransfer.files support"
+      ],
+      "tests": [
+        "node scripts/source-manager.js check",
+        "node scripts/agent-merge-check.js",
+        "npm run build not executed: next not installed in zip environment"
       ]
     }
   ]
