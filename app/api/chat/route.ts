@@ -16,10 +16,72 @@ import { analyzeMaxIntelligence, maxIntelligenceGuidance, maxIntelligenceReply, 
 import { truthfulnessEmergencyReply, truthfulnessEmergencyGuidance, truthfulnessQualityGate } from "../../../lib/truthfulness-emergency";
 import { gptSourceIntelligenceReply, gptSourceGuidance } from "../../../lib/gpt-source-intelligence";
 import { expertTeamReply, expertTeamGuidance } from "../../../lib/expert-team";
+import { dataUrlToUpload, fileToUpload, summarizeUploads, uploadLimits, type NormalizedUpload } from "../../../lib/upload-router";
+import { visionReply } from "../../../lib/vision-router";
 
-type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
+export const runtime = "nodejs";
+
+type ChatMessage = { role: "user" | "assistant" | "system"; content: string; images?: any[]; attachments?: any[] };
 
 type ProviderResult = { content: string; model: string; intent?: string; fallbackUsed?: boolean; sources?: string[] };
+
+function apiError(code: string, message: string, status = 500, details?: Record<string, unknown>) {
+  return NextResponse.json({ ok: false, error: message, errorCode: code, details: details || undefined }, { status });
+}
+
+function safeJsonParse(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try { return JSON.parse(value); } catch { return null; }
+}
+
+async function parseChatRequest(req: Request) {
+  const contentType = req.headers.get("content-type") || "";
+  const uploads: NormalizedUpload[] = [];
+  let body: any = {};
+
+  if (contentType.includes("multipart/form-data")) {
+    const form = await req.formData();
+    body = safeJsonParse(form.get("payload")) || safeJsonParse(form.get("body")) || {};
+    const messages = safeJsonParse(form.get("messages"));
+    if (messages) body.messages = messages;
+    for (const value of form.values()) {
+      if (value instanceof File) uploads.push(await fileToUpload(value));
+    }
+  } else {
+    body = await req.json();
+    const rawUploads = [
+      ...(Array.isArray(body?.images) ? body.images : []),
+      ...(Array.isArray(body?.attachments) ? body.attachments : []),
+      ...(((body?.messages || []) as ChatMessage[]).flatMap((m) => [
+        ...(Array.isArray(m?.images) ? m.images : []),
+        ...(Array.isArray(m?.attachments) ? m.attachments : [])
+      ]))
+    ];
+    for (const item of rawUploads) {
+      const upload = dataUrlToUpload(item);
+      if (upload) uploads.push(upload);
+    }
+  }
+
+  const limits = uploadLimits();
+  const summary = summarizeUploads(uploads);
+  const limitedUploads = [
+    ...summary.images.slice(0, limits.maxImagesPerMessage),
+    ...summary.documents.slice(0, limits.maxDocumentsPerMessage),
+    ...summary.unsupported
+  ];
+  return { body, uploadSummary: summarizeUploads(limitedUploads) };
+}
+
+function appendUploadContext(latestUser: string, documents: NormalizedUpload[], unsupported: NormalizedUpload[]) {
+  const documentContext = documents.length
+    ? `\n\n[Documents joints exploitables côté serveur]\n${documents.map((doc) => `### ${doc.name} (${doc.type}, ${Math.round(doc.size / 1024)} Ko)\n${doc.text || ""}`).join("\n\n")}`
+    : "";
+  const uploadWarnings = unsupported.length
+    ? `\n\n[Fichiers joints non exploités directement]\n${unsupported.map((file) => `- ${file.name}: ${file.warning || "format non supporté"}`).join("\n")}`
+    : "";
+  return `${latestUser}${documentContext}${uploadWarnings}`.trim();
+}
 
 function norm(text: string) {
   return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -238,24 +300,28 @@ async function openRouterReply(messages: ChatMessage[], systemPrompt: string): P
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean);
-    if (!messages.length) return NextResponse.json({ error: "Aucun message fourni." }, { status: 400 });
+    const { body, uploadSummary } = await parseChatRequest(req);
+    const messages = ((body?.messages || []) as ChatMessage[]).filter(Boolean).map((m) => ({ role: m.role, content: String(m.content || "") }));
+    if (!messages.length) return apiError("CHAT_NO_MESSAGES", "Aucun message fourni.", 400);
 
     const memory = process.env.ENABLE_MEMORY === "false" ? [] : (Array.isArray(body?.memory) ? body.memory.filter(Boolean).slice(0, 18) : []);
     const userKnowledge = Array.isArray(body?.userKnowledge) ? body.userKnowledge.filter(Boolean).slice(0, 18) : [];
-    const latestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const rawLatestUser = [...messages].reverse().find((m) => m.role === "user")?.content || "";
+    const latestUser = appendUploadContext(rawLatestUser, uploadSummary.documents, uploadSummary.unsupported);
     const responseMode = inferResponseMode(latestUser, (body?.responseMode || "auto") as ResponseMode);
-    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser);
+    const hasImageAttachment = /\[Images jointes par l’utilisateur/i.test(latestUser) || uploadSummary.images.length > 0;
     if (hasImageAttachment) {
+      const vision = await visionReply(messages, rawLatestUser, uploadSummary.images, uploadSummary.unsupported);
       return NextResponse.json({
-        content: "J’ai bien reçu l’image. Dans cette version, je peux l’afficher dans la conversation, mais je ne peux pas encore l’analyser visuellement côté serveur. L’analyse vision serveur est prévue pour V91. Décris-moi ce que tu veux vérifier sur l’image et je t’aide à partir de ta description.",
-        provider: "nimbray-local",
-        model: "v90-upload-image-stability",
+        ok: true,
+        content: vision.content,
+        provider: vision.provider,
+        model: vision.model,
         intent: "image-upload",
         responseMode,
-        fallbackUsed: false,
-        sourcesUsed: []
+        fallbackUsed: vision.fallbackUsed,
+        sourcesUsed: [],
+        uploads: { images: uploadSummary.images.length, documents: uploadSummary.documents.length, unsupported: uploadSummary.unsupported.length }
       });
     }
     const maxProfile = analyzeMaxIntelligence(latestUser, messages);
@@ -305,14 +371,14 @@ export async function POST(req: Request) {
         sourcesUsed: []
       });
     }
-    // V90 Project Brain : conserve l’inspiration GPT Source sans l’annoncer comme état projet actuel
+    // V76 GPT Source Intelligence : inspire NimbrayAI des principes GPTs publics
     // sans copier de GPT privé, sans inventer d accès et sans faux liens/actions.
     const gptSource = gptSourceIntelligenceReply(latestUser, messages);
     if (gptSource) {
       return NextResponse.json({
         content: gptSource.content,
         provider: "nimbray-local",
-        model: "v90-gpt-source-principles",
+        model: "v76-gpt-source-intelligence",
         intent: gptSource.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -321,13 +387,13 @@ export async function POST(req: Request) {
     }
 
 
-    // V90 Project Memory : état projet, décisions, roadmap et prochaine action avant les anciens moteurs.
+    // V72 Memory & Project Intelligence : état projet, décisions, roadmap et prochaine action avant les anciens moteurs.
     const projectReply = projectIntelligenceReply(latestUser, projectSnapshot);
     if (projectReply) {
       return NextResponse.json({
         content: projectReply.content,
         provider: "nimbray-local",
-        model: "v90-project-memory",
+        model: "v72-memory-project-intelligence",
         intent: projectReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -335,13 +401,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // V90 Quality Core : raisonnement, contraintes et réponses pratiques avant les anciens moteurs.
+    // V74 Max Intelligence Core : raisonnement, contraintes et réponses pratiques avant les anciens moteurs.
     const maxReply = maxIntelligenceReply(latestUser, messages);
     if (maxReply) {
       return NextResponse.json({
         content: maxReply.content,
         provider: "nimbray-local",
-        model: "v90-quality-core",
+        model: "v74-max-intelligence-core",
         intent: maxReply.intent,
         responseMode: "auto",
         fallbackUsed: false,
@@ -440,7 +506,7 @@ ${gptSourceGuidance()}
 ${expertTeamGuidance()}
 ${safetyGuidanceForPrompt()}
 Sécurité détectée : ${safety.category}. ${safety.guidance}
-V90 Project Brain, Provider Router, Knowledge Router, mémoire projet, réponses naturelles et upload stable : réponse directe, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
+V76 GPT Source Intelligence, V74 Max Intelligence Core, Memory & Project Intelligence, Contextual Safety, Sources & Knowledge Platform : réponse directe, naturelle, fiable et humaine. Priorité aux moteurs locaux consolidés avant Groq. Groq seulement si nécessaire. Sources invisibles sauf demande explicite. Pas de JSON technique. Intent platform détecté : ${intentLabel(platformIntent)}. ${platformIntent === "super_brain" ? `Super Brain : ${superBrainGuidance().join(" ; ")}.` : ""} ${compassGuidance(compassMode)} ${qualityGuidance(latestUser)}`;
     const systemPrompt = buildSystemPrompt(memory.slice(0, 5), context, guidance);
     const provider = (process.env.AI_PROVIDER || "demo").toLowerCase();
 
@@ -448,7 +514,7 @@ V90 Project Brain, Provider Router, Knowledge Router, mémoire projet, réponses
     if (provider === "ollama") result = await ollamaReply(messages, systemPrompt, latestUser);
     else if (provider === "groq") result = await groqReply(messages, systemPrompt);
     else if (provider === "openrouter") result = await openRouterReply(messages, systemPrompt);
-    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v90", intent: conversationIntent };
+    else result = { content: demoReply(messages, memory, userKnowledge.length > 0, responseMode, conversationIntent), model: "nimbray-demo-engine-v74", intent: conversationIntent };
 
     const showSources = wantsSources(latestUser);
     const cleanSources = showSources
@@ -459,6 +525,7 @@ V90 Project Brain, Provider Router, Knowledge Router, mémoire projet, réponses
       : [];
 
     return NextResponse.json({
+      ok: true,
       content: truthfulnessQualityGate(maxIntelligenceQualityGate(postProcessNaturalResponse(result.content, latestUser, messages), latestUser, messages), latestUser, messages),
       provider,
       model: result.model,
@@ -477,6 +544,6 @@ V90 Project Brain, Provider Router, Knowledge Router, mémoire projet, réponses
       : raw.includes("fetch failed")
       ? "Je n’arrive pas à contacter le moteur IA local. Vérifie qu’Ollama est lancé, ou utilise le mode démo en attendant."
       : "Je n’ai pas pu répondre correctement cette fois. Réessaie dans quelques secondes.";
-    return NextResponse.json({ error: friendly }, { status: 500 });
+    return apiError("CHAT_PROVIDER_ERROR", friendly, 500);
   }
 }

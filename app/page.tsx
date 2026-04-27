@@ -410,8 +410,8 @@ export default function HomePage() {
           projectContext: {
             projectName: "NimbrayAI",
             activeThreadTitle: active.title,
-            currentVersion: "V82",
-            focus: "Collaborative Workspaces : source officielle unique, espaces séparés par agent/conversation, journaux de changements et intégration validée",
+            currentVersion: "V91",
+            focus: "Interface chat minimaliste premium, upload préservé, mémoire projet V90 priorisée et préparation vision serveur côté roadmap",
             conversationSummary
           }
         })
@@ -477,7 +477,7 @@ export default function HomePage() {
 
   function exportEspace() {
     const blob = new Blob([
-      JSON.stringify({ version: "76.0.0", threads, memory, knowledge, profile: { name: profileName, email: profileEmail }, exportedAt: new Date().toISOString() }, null, 2)
+      JSON.stringify({ version: "91.0.0", threads, memory, knowledge, profile: { name: profileName, email: profileEmail }, exportedAt: new Date().toISOString() }, null, 2)
     ], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -547,7 +547,7 @@ export default function HomePage() {
   const drawerSubtitle = drawer === "memory" ? "Ce que NimbrayAI garde en tête pour mieux t’aider." : drawer === "knowledge" ? "Tes sources alimentent le RAG local et les connaissances." : drawer === "brain" ? "Architecture du cerveau, packs et domaines couverts." : drawer === "workspace" ? "Sauvegarde locale, export, import et cloud optionnel." : drawer === "admin" ? "Diagnostic technique et commandes utiles." : drawer === "feedback" ? "Un retour rapide pour faire progresser NimbrayAI." : drawer === "account" ? "Préférences, style et informations de profil." : "Panneau latéral";
 
   return (
-    <main className="shell v46-shell">
+    <main className="shell v91-shell">
       {mobileSidebarOpen ? <button className="mobile-backdrop" aria-label="Fermer le menu" onClick={() => setMobileSidebarOpen(false)} /> : null}
 
       <aside className={`sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
@@ -556,11 +556,11 @@ export default function HomePage() {
             <div className="brand-mark">N</div>
             <div>
               <div className="brand-name">NimbrayAI</div>
-              <div className="brand-sub">Nimbray multi-agent</div>
+              <div className="brand-sub">V91 · interface minimale</div>
             </div>
           </div>
 
-          <button className="new-chat-btn" onClick={newChat}>+ Nouvelle discussion</button>
+          <button className="new-chat-btn" onClick={newChat}><span>＋</span> Nouvelle discussion</button>
           <div className="thread-search-wrap">
             <input className="thread-search" value={threadQuery} onChange={(e) => setThreadQuery(e.target.value)} placeholder="Rechercher une discussion" />
           </div>
@@ -602,7 +602,7 @@ export default function HomePage() {
           <button className="mobile-menu-btn" onClick={() => setMobileSidebarOpen(true)} aria-label="Ouvrir le menu">☰</button>
           <div className="topbar-title">
             <h1>{active?.title || "Nouvelle discussion"}</h1>
-            <p>Produit, IA, Backend, Frontend — ensemble.</p>
+            <p>Interface V91 · sobre, rapide, lisible.</p>
           </div>
           <div className="topbar-actions">
             <button onClick={() => regenerate()} disabled={loading || !active?.messages.length}>Régénérer</button>
@@ -614,8 +614,13 @@ export default function HomePage() {
           {!active?.messages.length ? (
             <div className="welcome clean-welcome">
               <div className="welcome-logo">N</div>
-              <h2>Bonjour, que veux-tu demander à NimbrayAI&nbsp;?</h2>
-              <p className="welcome-minimal-text">Une IA simple, humaine et utile.</p>
+              <h2>Que veux-tu explorer aujourd’hui&nbsp;?</h2>
+              <p className="welcome-minimal-text">Un espace calme pour discuter, créer, analyser des sources et avancer sur Nimbray.</p>
+              <div className="starter-grid">
+                <button onClick={() => setInput("Résume l’état actuel du projet Nimbray")}>Résumer le projet</button>
+                <button onClick={() => setInput("Aide-moi à améliorer cette interface")}>Améliorer l’UX</button>
+                <button onClick={() => setInput("Je me sens un peu seul")}>Parler simplement</button>
+              </div>
             </div>
           ) : (
             <div className="messages-list">
@@ -642,7 +647,7 @@ export default function HomePage() {
                 <div className="message-row assistant">
                   <div className="assistant-block">
                     <div className="assistant-signature"><span className="signature-mark">N</span><span>NimbrayAI</span></div>
-                    <div className="message-content thinking">NimbrayAI répond…</div>
+                    <div className="message-content thinking">Nimbray réfléchit…</div>
                   </div>
                 </div>
               ) : null}
@@ -664,7 +669,7 @@ export default function HomePage() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
                 rows={1}
-                placeholder="Écris ton message à NimbrayAI…"
+                placeholder="Message Nimbray…"
               />
               <button className="send-btn" onClick={() => send()} disabled={(!input.trim() && !pendingImages.length) || loading}>Envoyer</button>
             </div>
@@ -679,7 +684,7 @@ export default function HomePage() {
                 ))}
               </div>
             ) : null}
-            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour un saut de ligne · Images acceptées</div>
+            <div className="composer-hint">Entrée pour envoyer · Shift + Entrée pour aller à la ligne · Images et documents acceptés</div>
           </div>
         </div>
       </section>
@@ -719,7 +724,7 @@ export default function HomePage() {
                   <strong>Ajouter des sources</strong>
                   <span>TXT, MD, CSV, JSON, code, PDF, DOCX</span>
                 </label>
-                <div className="source-grid-note">Le cerveau V46 regroupe les connaissances en pôles : comportement, savoir stable, action, sécurité, documents et mémoire.</div>
+                <div className="source-grid-note">Les sources ajoutées restent intégrées au contexte local. Les images conservent leur preview ; l’analyse vision serveur reste traitée côté roadmap IA/backend.</div>
                 {parseNotes.length ? (
                   <div className="parse-notes">
                     {parseNotes.map((note, i) => (
@@ -749,7 +754,7 @@ export default function HomePage() {
                 <div className="admin-card"><strong>Safety Brain</strong><span>Violence, suicide, illégal, détresse, autodommage, cybersécurité offensive : réponses cadrées et utiles.</span></div>
                 <div className="admin-card"><strong>Document & Memory Brain</strong><span>Documents utilisateur, RAG local, mémoire personnelle et préférences durables.</span></div>
                 <div className="admin-card"><strong>Project Brain V90</strong><span>Mémoire projet prioritaire, routage IA, réponses naturelles, upload stable et préparation V91 pour l’analyse vision serveur.</span></div>
-                <div className="admin-card"><strong>Collaborative Workspaces V82</strong><span>Source officielle unique, espaces séparés par conversation/agent, journaux de changements, handoffs et intégration validée.</span></div>
+                <div className="admin-card"><strong>Collaborative Workspaces V91</strong><span>Source officielle unique, espaces séparés par conversation/agent, journaux de changements, handoffs et intégration validée.</span></div>
                 <div className="admin-card"><strong>Capability Matrix</strong><span>Auto, Expert, Code, Projet, Créatif, Coach, Court, Apprendre, Recherche et Sécurité, avec contrôle des contraintes.</span></div>
               </div>
             ) : null}
