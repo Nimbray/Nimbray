@@ -15,14 +15,16 @@
     "agent:handoff": "node scripts/agent-handoff.js",
     "agent:changelog": "node scripts/agent-changelog.js",
     "agent:merge-check": "node scripts/agent-merge-check.js",
-    "agent:pr-check": "node scripts/agent-workflow.js pr-check"
+    "agent:pr-check": "node scripts/agent-workflow.js pr-check",
+    "lint": "echo \"No lint configured for this snapshot.\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "next": "^14.2.33",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "mammoth": "^1.8.0",
-    "next": "14.2.35",
-    "pdf-parse": "^1.1.1",
-    "react": "18.3.1",
-    "react-dom": "18.3.1"
+    "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
     "@types/node": "^20.16.5",

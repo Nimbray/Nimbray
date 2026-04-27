@@ -30,24 +30,27 @@
       ]
     },
     {
-      "version": "85.0.0",
-      "agent": "produit",
-      "branch": "agent/product/v85-roadmap-v85-v90",
+      "version": "84.0.0",
+      "agent": "backend",
+      "branch": "agent/backend/v85-upload-api-real",
       "status": "proposed",
       "date": "2026-04-27",
-      "summary": "Cadrage Produit V85 à V90 : priorités, critères d’acceptation, upload, cerveau IA, UX chat et déploiement.",
+      "summary": "V85 réelle : solidification de /api/chat pour messages avec pièces jointes, parsing JSON/multipart et erreurs client lisibles.",
       "files": [
-        "project-workspaces/02_agent-produit/ROADMAP.md",
-        "project-workspaces/02_agent-produit/NOTES.md",
-        "project-workspaces/02_agent-produit/HANDOFF_PRODUIT_V85_roadmap-v85-v90.md"
+        "app/api/chat/route.ts",
+        "package.json",
+        "project-workspaces/04_agent-backend/HANDOFF_BACKEND_V85_upload-api-real.md",
+        "project-workspaces/04_agent-backend/BACKEND_WORKLOG.md"
       ],
       "risks": [
-        "Dépend des corrections Frontend Backend IA pour valider le parcours upload réel",
-        "Ne remplace pas la validation runtime ni les tests manuels"
+        "Le frontend doit encore envoyer un champ attachments structuré pour exploiter totalement le nouveau chemin backend.",
+        "Le build Next local reste bloqué longtemps sur Creating an optimized production build dans cette archive."
       ],
       "tests": [
         "npm run source:check",
-        "npm run agent:merge-check"
+        "npm run agent:merge-check",
+        "npm run lint",
+        "npm run typecheck"
       ]
     }
   ]
